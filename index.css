@@ -1,0 +1,288 @@
+
+/* Global Styles */
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@200;300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    font-family: 'Cairo', sans-serif;
+    background-color: #f8fafc;
+    color: #0f172a;
+    margin: 0;
+    padding: 0;
+    direction: rtl;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+@layer utilities {
+  .glass {
+    @apply bg-white/70 backdrop-blur-lg border border-white/20 shadow-xl;
+  }
+  .glass-dark {
+    @apply bg-slate-900/70 backdrop-blur-lg border border-slate-700/50 shadow-xl;
+  }
+  .glass-card {
+    @apply bg-white/80 backdrop-blur-md border border-white/40 shadow-[0_8px_30px_rgb(0,0,0,0.04)];
+  }
+  .glass-panel {
+    @apply bg-white/60 backdrop-blur-xl border border-white/50 shadow-sm;
+  }
+  .text-gradient {
+    @apply bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600;
+  }
+}
+
+/* Fix Select Dropdowns text color */
+select option {
+  color: #000;
+  background: #fff;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* Animations */
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes pulseSlow { 0%, 100% { opacity: 1; } 50% { opacity: 0.8; } }
+@keyframes blob {
+  0% { transform: translate(0px, 0px) scale(1); }
+  33% { transform: translate(30px, -50px) scale(1.1); }
+  66% { transform: translate(-20px, 20px) scale(0.9); }
+  100% { transform: translate(0px, 0px) scale(1); }
+}
+
+.animate-fade-in { animation: fadeIn 0.5s ease-out forwards; }
+.animate-fade-in-up { animation: fadeInUp 0.5s ease-out forwards; }
+.animate-pulse-slow { animation: pulseSlow 3s infinite; }
+.animate-blob { animation: blob 7s infinite; }
+.animation-delay-2000 { animation-delay: 2s; }
+.animation-delay-4000 { animation-delay: 4s; }
+
+/* Floating Dock Animation */
+.floating-dock button {
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+.floating-dock button:hover {
+  transform: translateY(-10px) scale(1.1);
+}
+
+/* ========================================= */
+/* PRINT STYLES - OFFICIAL MOE TEMPLATE      */
+/* ========================================= */
+
+@media print {
+  @page {
+    size: A4;
+    margin: 4mm; /* Exact 4mm margins as requested */
+  }
+
+  html, body {
+    width: 210mm;
+    height: 297mm;
+    background-color: white !important;
+    color: black !important;
+    margin: 0;
+    padding: 0;
+    font-size: 11pt; /* Optimal reading size for A4 */
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* CRITICAL: Hide Sidebar and Navigation strictly */
+  aside, nav, header, footer, button, .no-print, .sidebar, .floating-dock, .admin-header, .custom-scrollbar::-webkit-scrollbar, .hidden-print {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+    overflow: hidden !important;
+    visibility: hidden !important;
+  }
+
+  /* Force Main Content to Full Width */
+  main, #root, body {
+    width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    display: block !important;
+  }
+
+  /* Specific Print Container Logic */
+  #print-container, .printable-area, #exit-report-print, #staff-report-print, #gate-report, #print-area {
+    display: block !important;
+    position: absolute !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100% !important;
+    height: auto !important;
+    background: white !important;
+    z-index: 9999;
+    padding: 0 !important; /* Let @page handle margins */
+    margin: 0 !important;
+    visibility: visible !important;
+  }
+  
+  /* Reset visibility for children */
+  #print-container *, .printable-area *, #exit-report-print *, #staff-report-print *, #gate-report *, #print-area * {
+    visibility: visible !important;
+  }
+
+  /* Watermark Logic - Ministry Logo */
+  .print-page-a4 {
+    position: relative;
+    width: 100%;
+    min-height: 280mm;
+    overflow: hidden;
+  }
+
+  .print-watermark {
+    position: fixed; /* Fixed to center of page even if content scrolls */
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 50%;
+    opacity: 0.05; /* Very subtle */
+    z-index: -1;
+    pointer-events: none;
+    filter: grayscale(100%);
+  }
+
+  /* Official Header Layout */
+  .print-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    border-bottom: 2px solid #000;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    width: 100%;
+  }
+
+  .print-header-right, .print-header-left {
+    text-align: center;
+    font-weight: bold;
+    font-size: 9pt;
+    line-height: 1.4;
+    width: 30%;
+    flex-shrink: 0;
+  }
+
+  .print-header-center {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding-top: 0;
+  }
+
+  .print-logo {
+    max-height: 80px; /* Constrain height to avoid pushing content */
+    width: auto;
+    object-fit: contain;
+  }
+
+  /* Official Title */
+  .official-title {
+    text-align: center;
+    font-size: 16pt;
+    font-weight: 800;
+    text-decoration: underline;
+    text-underline-offset: 5px;
+    margin-bottom: 25px;
+    margin-top: 10px;
+  }
+
+  /* Signature Section */
+  .footer-signatures {
+    margin-top: 50px;
+    display: flex;
+    justify-content: space-between;
+    page-break-inside: avoid;
+    width: 100%;
+    padding: 0 10px;
+  }
+  
+  .signature-box {
+    text-align: center;
+    width: 30%;
+  }
+  
+  .signature-title {
+    font-weight: bold;
+    margin-bottom: 30px;
+    font-size: 11pt;
+  }
+
+  /* Certificate Styles */
+  .certificate-border {
+    border: 8px double #1e3a8a;
+    padding: 15px;
+    height: 98%;
+    position: relative;
+    background: white;
+  }
+  
+  /* Tables */
+  table {
+    width: 100% !important;
+    border-collapse: collapse;
+    page-break-inside: auto;
+  }
+  
+  tr {
+    page-break-inside: avoid;
+    page-break-after: auto;
+  }
+  
+  th, td {
+    padding: 6px;
+    font-size: 10pt;
+  }
+
+  /* Referral Report Specifics */
+  .referral-box {
+    border: 1px solid #000;
+    padding: 8px;
+    margin-bottom: 12px;
+    position: relative;
+    background-color: #fff;
+    page-break-inside: avoid;
+  }
+  
+  .referral-box-title {
+    background: #e5e5e5 !important;
+    padding: 4px 8px;
+    font-weight: bold;
+    font-size: 10pt;
+    border-bottom: 1px solid #000;
+    margin: -8px -8px 8px -8px;
+    display: block;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .referral-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  
+  .referral-row {
+    font-size: 10pt;
+  }
+  
+  .referral-label {
+    font-weight: bold;
+    margin-left: 5px;
+  }
+}
