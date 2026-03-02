@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Search, UserCheck, School, X, CheckSquare, Square, Loader2, RefreshCw, Edit, Save, Smartphone, Hash, GraduationCap, Filter } from 'lucide-react';
 import { getStudents, syncStudentsBatch, getStudentsSync, addStudent, deleteStudent, bulkDeleteStudents, updateStudent, getAvailableClassesForGrade } from '../../services/storage';
 import { Student } from '../../types';
-import { GRADES, CLASSES } from '../../constants';
+
 
 // Declare XLSX for TypeScript since it's loaded via CDN in index.html
 declare var XLSX: any;
@@ -30,7 +30,7 @@ const Students: React.FC = () => {
   const [formData, setFormData] = useState({
     name: '',
     studentId: '',
-    grade: GRADES[0],
+    grade: '',
     className: '',
     phone: ''
   });
@@ -79,6 +79,12 @@ const Students: React.FC = () => {
     return filteredStudents.filter(s => !filterGrade || s.grade === filterGrade);
   }, [filteredStudents, filterGrade]);
 
+  const availableFilterGrades = useMemo(() => {
+    const gradesSet = new Set(students.map(s => s.grade));
+    // Sort them somehow, or just leave them as they appear or you can sort alphabetically. Usually standard sort is fine.
+    return Array.from(gradesSet).filter(Boolean).sort();
+  }, [students]);
+
   // --- Bulk Selection ---
   const handleSelectAll = () => {
     if (selectedIds.length === filteredStudentsWithGrade.length) setSelectedIds([]);
@@ -109,7 +115,7 @@ const Students: React.FC = () => {
   const openAddModal = () => {
     setIsEditing(false);
     setCurrentStudentId(null);
-    setFormData({ name: '', studentId: '', grade: GRADES[0], className: '', phone: '' });
+    setFormData({ name: '', studentId: '', grade: '', className: '', phone: '' });
     setShowModal(true);
   };
 
@@ -184,8 +190,7 @@ const Students: React.FC = () => {
     if (c.includes('ثالث')) return 'الثالث متوسط';
 
     // Generic
-    if (GRADES.includes(c)) return c;
-    return c || GRADES[0];
+    return c || '';
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -224,7 +229,7 @@ const Students: React.FC = () => {
             id: '',
             name,
             studentId,
-            grade: grade || GRADES[0],
+            grade: grade || '',
             className: className || '1',
             phone
           });
@@ -315,7 +320,7 @@ const Students: React.FC = () => {
           <Filter size={16} className="text-slate-400" />
           <select value={filterGrade} onChange={e => setFilterGrade(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-900/30 bg-white">
             <option value="">كل الصفوف</option>
-            {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+            {availableFilterGrades.map(g => <option key={g} value={g}>{g}</option>)}
           </select>
         </div>
         {selectedIds.length > 0 && (
@@ -415,7 +420,7 @@ const Students: React.FC = () => {
                 <div>
                   <label className={labelClasses}>الصف الدراسي *</label>
                   <select required value={formData.grade} onChange={e => setFormData(p => ({ ...p, grade: e.target.value, className: '' }))} className={inputClasses}>
-                    {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                    {availableFilterGrades.map(g => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div>

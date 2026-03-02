@@ -7,7 +7,7 @@ import {
     getStudentsSync, getStudents, addDailyAcademicLog, getDailyAcademicLogs, createNotification
 } from '../../services/storage';
 import { DailyAcademicLog, StaffUser, Student } from '../../types';
-import { GRADES, CLASSES } from '../../constants';
+
 
 const { useNavigate } = ReactRouterDOM as any;
 
@@ -45,8 +45,21 @@ const Teacher: React.FC = () => {
         initData();
     }, [navigate]);
 
-    const availableGrades = GRADES;
-    const availableClasses = CLASSES;
+    const availableGrades = useMemo(() => {
+        const grades = new Set<string>();
+        students.forEach(s => {
+            if (s.grade) {
+                grades.add(s.grade);
+            }
+        });
+        return Array.from(grades).sort();
+    }, [students]);
+
+    const availableClasses = useMemo(() => {
+        if (!selectedGrade) return [];
+        const classes = new Set(students.filter(s => s.grade === selectedGrade && s.className).map(s => s.className));
+        return Array.from(classes).sort();
+    }, [students, selectedGrade]);
 
     // Automatically select options if there's only one
     useEffect(() => {

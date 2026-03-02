@@ -35,7 +35,7 @@ import {
     updateExitPermissionStatus
 } from '../../services/storage';
 import { Student, BehaviorRecord, StaffUser, Referral, StudentObservation, AttendanceRecord, AttendanceStatus, DailyAcademicLog, ExitPermission } from '../../types';
-import { BEHAVIOR_VIOLATIONS, GRADES } from '../../constants';
+import { BEHAVIOR_VIOLATIONS } from '../../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area } from 'recharts';
 import AttendanceMonitor from './AttendanceMonitor';
 import { PrintReport, triggerPrint } from '../../components/PrintReport';
@@ -138,6 +138,16 @@ const StaffDeputy: React.FC = () => {
     const [absenceDatesToPrint, setAbsenceDatesToPrint] = useState<string[]>([]);
     const [certificateData, setCertificateData] = useState<{ reason: string } | null>(null);
     const [referralToPrint, setReferralToPrint] = useState<Referral | null>(null);
+
+    const uniqueGrades = useMemo(() => {
+        const grades = new Set<string>();
+        students.forEach(s => {
+            if (s.grade) {
+                grades.add(s.grade);
+            }
+        });
+        return Array.from(grades).sort();
+    }, [students]);
 
     // Search
     const [search, setSearch] = useState('');
@@ -1328,7 +1338,7 @@ const StaffDeputy: React.FC = () => {
                                 <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 mb-4">
                                     <label className="text-xs font-bold text-slate-400 uppercase mb-2 block">بيانات الطالب</label>
                                     <div className="grid grid-cols-2 gap-3 mb-3">
-                                        <select value={formGrade} onChange={e => { setFormGrade(e.target.value); setFormClass(''); }} className="w-full p-2 border rounded-lg text-sm font-bold bg-white"><option value="">الصف</option>{GRADES.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                                        <select value={formGrade} onChange={e => { setFormGrade(e.target.value); setFormClass(''); }} className="w-full p-2 border rounded-lg text-sm font-bold bg-white"><option value="">الصف</option>{uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}</select>
                                         <select value={formClass} disabled={!formGrade} onChange={e => setFormClass(e.target.value)} className="w-full p-2 border rounded-lg text-sm font-bold bg-white"><option value="">الفصل</option>{availableClasses.map(c => <option key={c} value={c}>{c}</option>)}</select>
                                     </div>
                                     <select required value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} className="w-full p-2 border rounded-lg text-sm font-bold bg-white"><option value="">اختر الطالب...</option>{availableStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
@@ -1376,7 +1386,7 @@ const StaffDeputy: React.FC = () => {
                                         <div className="bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
                                             <h3 className="text-xs font-bold text-slate-400 uppercase mb-3 flex items-center gap-2"><User size={14} /> بيانات الطالب</h3>
                                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                                                <select value={formGrade} onChange={e => { setFormGrade(e.target.value); setFormClass(''); }} className="p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-red-100"><option value="">اختر الصف</option>{GRADES.map(g => <option key={g} value={g}>{g}</option>)}</select>
+                                                <select value={formGrade} onChange={e => { setFormGrade(e.target.value); setFormClass(''); }} className="p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-red-100"><option value="">اختر الصف</option>{uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}</select>
                                                 <select value={formClass} disabled={!formGrade} onChange={e => setFormClass(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-red-100 disabled:bg-slate-50"><option value="">اختر الفصل</option>{availableClasses.map(c => <option key={c} value={c}>{c}</option>)}</select>
                                                 <select value={selectedStudentId} onChange={e => setSelectedStudentId(e.target.value)} className="p-3 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-red-100 disabled:bg-slate-50" disabled={!formClass}><option value="">اختر الطالب...</option>{availableStudents.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}</select>
                                             </div>
@@ -1566,7 +1576,7 @@ const StaffDeputy: React.FC = () => {
                                     <div className="grid grid-cols-2 gap-3">
                                         <select value={directRefGrade} onChange={e => { setDirectRefGrade(e.target.value); setDirectRefClass(''); setDirectRefStudentId(''); }} className="p-2.5 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-100 bg-white">
                                             <option value="">الصف</option>
-                                            {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                                            {uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}
                                         </select>
                                         <select value={directRefClass} disabled={!directRefGrade} onChange={e => { setDirectRefClass(e.target.value); setDirectRefStudentId(''); }} className="p-2.5 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-blue-100 bg-white disabled:opacity-50">
                                             <option value="">الفصل</option>

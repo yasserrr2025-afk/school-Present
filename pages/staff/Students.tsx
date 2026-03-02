@@ -19,7 +19,7 @@ import {
     updateReferralStatus, resolveAbsenceAlert, generateGuidancePlan, generateSmartContent
 } from '../../services/storage';
 import { Student, StaffUser, Referral, GuidanceSession, AttendanceStatus, BehaviorRecord, StudentObservation } from '../../types';
-import { GRADES } from '../../constants';
+
 
 // --- Official Print Header ---
 const OfficialCounselorHeader = ({ title, date }: { title: string, date: string }) => (

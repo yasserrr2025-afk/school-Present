@@ -3,7 +3,7 @@ import * as ReactRouterDOM from 'react-router-dom';
 import { Upload, CheckCircle, Calendar, User, FileText, Sparkles, AlertCircle, ChevronRight, Home, Paperclip, CalendarDays, Clock, ArrowRight, ArrowLeft, Loader2, School, Users, LineChart } from 'lucide-react';
 import { getStudents, addRequest, uploadFile, generateSmartContent } from '../services/storage';
 import { Student, ExcuseRequest, RequestStatus } from '../types';
-import { GRADES } from '../constants';
+
 
 const { useNavigate, useSearchParams } = ReactRouterDOM as any;
 
@@ -48,6 +48,10 @@ const Submission: React.FC = () => {
         };
         fetchData();
     }, []);
+
+    const availableGrades = useMemo(() => {
+        return Array.from(new Set(students.map(s => s.grade))).filter(Boolean).sort();
+    }, [students]);
 
     const availableClasses = useMemo(() => {
         if (!selectedGrade) return [];
@@ -274,7 +278,7 @@ const Submission: React.FC = () => {
                                             <div className="relative">
                                                 <select required value={selectedGrade} onChange={(e) => { setSelectedGrade(e.target.value); setSelectedClass(''); setSelectedStudentId(''); }} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-base font-bold text-slate-700 outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all appearance-none pr-12 cursor-pointer shadow-sm hover:bg-white">
                                                     <option value="">اختر الصف...</option>
-                                                    {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                                                    {availableGrades.map(g => <option key={g} value={g}>{g}</option>)}
                                                 </select>
                                                 <ChevronRight size={20} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none rotate-90" />
                                             </div>

@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import { getStudents } from '../../services/storage';
 import { Student, StaffUser } from '../../types';
-import { GRADES } from '../../constants';
+
 
 const StudentDirectory: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<StaffUser | null>(null);
@@ -39,6 +39,17 @@ const StudentDirectory: React.FC = () => {
             setLoading(false);
         }
     };
+
+    // Extract unique grades for the filter dropdown
+    const uniqueGrades = useMemo(() => {
+        const grades = new Set<string>();
+        students.forEach(s => {
+            if (s.grade) {
+                grades.add(s.grade);
+            }
+        });
+        return Array.from(grades).sort();
+    }, [students]);
 
     // Extract unique classes for the filter dropdown
     const uniqueClasses = useMemo(() => {
@@ -113,7 +124,7 @@ const StudentDirectory: React.FC = () => {
                             className="w-full appearance-none pr-10 pl-4 py-4 bg-slate-50 border border-slate-200 rounded-2xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 cursor-pointer shadow-inner transition-all"
                         >
                             <option value="">كل الصفوف</option>
-                            {GRADES.map(g => <option key={g} value={g}>{g}</option>)}
+                            {uniqueGrades.map(g => <option key={g} value={g}>{g}</option>)}
                         </select>
                     </div>
 

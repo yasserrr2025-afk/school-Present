@@ -7,7 +7,7 @@ import {
     getStudentsSync, getStudents, getDailyAcademicLogs
 } from '../../services/storage';
 import { DailyAcademicLog, StaffUser, Student } from '../../types';
-import { GRADES, CLASSES } from '../../constants';
+
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip, CartesianGrid, Legend, Cell, PieChart, Pie } from 'recharts';
 
 const { useNavigate } = ReactRouterDOM as any;
