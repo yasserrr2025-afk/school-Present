@@ -76,9 +76,14 @@ const Inquiry: React.FC = () => {
     const [generatingReport, setGeneratingReport] = useState(false);
     const [academicLogs, setAcademicLogs] = useState<DailyAcademicLog[]>([]);
 
-    // Printing State
+    // Certificate Modal State
+    const [showCertModal, setShowCertModal] = useState(false);
+    const [certificateData, setCertificateData] = useState<{ studentName: string, reason: string, date: string, points?: number, certType?: string } | null>(null);
     const [printMode, setPrintMode] = useState<'none' | 'certificate'>('none');
-    const [certificateData, setCertificateData] = useState<{ studentName: string, reason: string, date: string, points?: number } | null>(null);
+    const certModalRef = React.useRef<HTMLDivElement>(null);
+    const idCardRef = React.useRef<HTMLDivElement>(null);
+    const visitorPassRef = React.useRef<HTMLDivElement>(null);
+    const MANAGER_NAME = localStorage.getItem('school_manager_name') || 'مدير المدرسة';
 
     // Reply State
     const [replyMode, setReplyMode] = useState<{ id: string, type: 'behavior' | 'observation' } | null>(null);
@@ -345,11 +350,29 @@ const Inquiry: React.FC = () => {
         if (!selectedStudent) return;
         let reason = record.content.replace('تعزيز سلوكي: ', '');
         let pts = 5;
-        const pointsMatch = reason.match(/\((\d+) درجات\)/);
+        const pointsMatch = reason.match(/(\d+) درجات\)/);
         if (pointsMatch) { pts = parseInt(pointsMatch[1]); reason = reason.replace(pointsMatch[0], '').trim(); }
-        setCertificateData({ studentName: selectedStudent.name, reason: reason, date: record.date, points: pts });
-        setPrintMode('certificate');
-        setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
+        setCertificateData({ studentName: selectedStudent.name, reason: reason, date: record.date, points: pts, certType: 'excellence' });
+        setShowCertModal(true);
+    };
+
+    const downloadElement = async (ref: React.RefObject<HTMLDivElement | null>, filename: string, asPdf = false) => {
+        if (!ref.current || !(window as any).html2canvas) { alert('جاري التحميل، حاول مرة أخرى.'); return; }
+        try {
+            const canvas = await (window as any).html2canvas(ref.current, { scale: 2, useCORS: true, logging: false, backgroundColor: '#ffffff' });
+            if (asPdf) {
+                const { jsPDF } = (window as any).jspdf;
+                const imgData = canvas.toDataURL('image/png');
+                const pdf = new jsPDF({ orientation: canvas.width > canvas.height ? 'landscape' : 'portrait', unit: 'px', format: [canvas.width / 2, canvas.height / 2] });
+                pdf.addImage(imgData, 'PNG', 0, 0, canvas.width / 2, canvas.height / 2);
+                pdf.save(`${filename}.pdf`);
+            } else {
+                const link = document.createElement('a');
+                link.download = `${filename}.png`;
+                link.href = canvas.toDataURL('image/png');
+                link.click();
+            }
+        } catch (e) { alert('حدث خطأ أثناء التحميل.'); }
     };
 
     const handleSlotClick = (slot: AppointmentSlot) => {
@@ -443,34 +466,70 @@ const Inquiry: React.FC = () => {
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
-    const VisitorPass = ({ appt }: { appt: Appointment }) => (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xl overflow-hidden relative w-full max-w-sm mx-auto">
-            <div className="h-3 bg-gradient-to-r from-blue-600 to-indigo-600 w-full"></div>
-            <div className="p-6 text-center relative">
-                <img src={SCHOOL_LOGO} alt="Logo" className="w-16 h-16 object-contain mx-auto mb-2 opacity-90" />
-                <h3 className="text-lg font-extrabold text-slate-900">{SCHOOL_NAME}</h3>
-                <p className="text-xs text-slate-500 uppercase tracking-widest mt-1">بطاقة دخول زائر</p>
+    const VisitorPass = ({ appt, passRef }: { appt: Appointment, passRef?: React.RefObject<HTMLDivElement | null> }) => (
+        <div ref={passRef} className="bg-white rounded-3xl overflow-hidden relative w-full max-w-sm mx-auto shadow-2xl" style={{ fontFamily: 'Arial, sans-serif' }}>
+            {/* Top gradient bar */}
+            <div className="h-2 w-full bg-gradient-to-l from-blue-600 via-indigo-500 to-purple-600"></div>
+
+            {/* Header */}
+            <div className="bg-gradient-to-br from-slate-900 to-blue-950 p-6 text-center text-white relative overflow-hidden">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full -mr-10 -mt-10 blur-2xl"></div>
+                <img src={SCHOOL_LOGO} alt="Logo" className="w-14 h-14 object-contain mx-auto mb-2 drop-shadow-md" />
+                <h3 className="text-base font-extrabold tracking-tight">{SCHOOL_NAME}</h3>
+                <div className="mt-2 inline-flex items-center gap-1.5 bg-white/10 px-3 py-1 rounded-full">
+                    <span className="w-1.5 h-1.5 bg-blue-300 rounded-full animate-pulse"></span>
+                    <p className="text-[10px] text-blue-200 font-bold uppercase tracking-widest">بطاقة دخول زائر رسمية</p>
+                </div>
             </div>
-            <div className="relative flex items-center justify-center my-2"><div className="absolute left-0 w-4 h-8 bg-slate-900 rounded-r-full -ml-2"></div><div className="w-full border-t-2 border-dashed border-slate-200 mx-6"></div><div className="absolute right-0 w-4 h-8 bg-slate-900 rounded-l-full -mr-2"></div></div>
-            <div className="p-6 space-y-5">
-                <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2"><span className="text-slate-400 text-xs font-bold uppercase">الزائر</span><span className="font-bold text-slate-800 text-base">{appt.parentName}</span></div>
-                <div className="flex justify-between items-center text-sm border-b border-slate-50 pb-2"><span className="text-slate-400 text-xs font-bold uppercase">الطالب</span><span className="font-bold text-slate-800">{appt.studentName}</span></div>
-                <div className="grid grid-cols-2 gap-4"><div className="bg-slate-50 p-2 rounded-lg text-center"><p className="text-[10px] text-slate-400 font-bold uppercase">التاريخ</p><p className="font-bold text-slate-800">{appt.slot?.date}</p></div><div className="bg-blue-50 p-2 rounded-lg text-center"><p className="text-[10px] text-blue-400 font-bold uppercase">الوقت</p><p className="font-bold text-blue-800 text-lg">{appt.slot?.startTime}</p></div></div>
+
+            {/* Punch holes separator */}
+            <div className="relative flex items-center justify-center -my-0.5">
+                <div className="absolute -left-3 w-6 h-6 bg-slate-100 rounded-full border-2 border-slate-200"></div>
+                <div className="w-full border-t-2 border-dashed border-slate-200 mx-8"></div>
+                <div className="absolute -right-3 w-6 h-6 bg-slate-100 rounded-full border-2 border-slate-200"></div>
             </div>
-            <div className="bg-slate-900 p-6 flex flex-col items-center justify-center text-white relative">
+
+            {/* Info fields */}
+            <div className="p-6 space-y-3 bg-white">
+                {[{ label: 'اسم الزائر', value: appt.parentName }, { label: 'الطالب المعني', value: appt.studentName }, { label: 'سبب الزيارة', value: appt.visitReason }].map(f => (
+                    <div key={f.label} className="flex justify-between items-center py-2 border-b border-slate-50 last:border-0">
+                        <span className="text-slate-400 text-[11px] font-bold uppercase tracking-wider">{f.label}</span>
+                        <span className="font-bold text-slate-800 text-sm text-left">{f.value || '-'}</span>
+                    </div>
+                ))}
+                <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div className="bg-blue-50 p-3 rounded-2xl text-center border border-blue-100">
+                        <p className="text-[9px] text-blue-400 font-bold uppercase mb-1">التاريخ</p>
+                        <p className="font-black text-blue-900 text-sm">{appt.slot?.date}</p>
+                    </div>
+                    <div className="bg-indigo-50 p-3 rounded-2xl text-center border border-indigo-100">
+                        <p className="text-[9px] text-indigo-400 font-bold uppercase mb-1">الوقت</p>
+                        <p className="font-black text-indigo-900 text-xl">{appt.slot?.startTime}</p>
+                    </div>
+                </div>
+            </div>
+
+            {/* QR / Status area */}
+            <div className="bg-gradient-to-br from-slate-800 to-slate-900 p-6 flex flex-col items-center text-white">
                 {appt.status === 'completed' ? (
-                    <div className="text-center py-6">
-                        <div className="bg-emerald-500 rounded-full p-4 mx-auto mb-4 w-20 h-20 flex items-center justify-center animate-bounce-slow"><CheckCircle size={40} className="text-white" /></div>
-                        <h3 className="text-2xl font-bold mb-2">تم تسجيل الدخول</h3>
-                        <p className="text-emerald-300 font-mono text-lg">{new Date(appt.arrivedAt || '').toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</p>
+                    <div className="text-center">
+                        <div className="bg-emerald-500 rounded-full p-4 mx-auto mb-3 w-16 h-16 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+                            <CheckCircle size={32} className="text-white" />
+                        </div>
+                        <h3 className="text-lg font-black mb-1">✅ تم تسجيل الدخول</h3>
+                        <p className="text-emerald-400 font-mono">{new Date(appt.arrivedAt || '').toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}</p>
                     </div>
                 ) : (
                     <>
-                        <div className="bg-white p-3 rounded-xl mb-3 shadow-lg"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${appt.id}`} alt="QR" className="w-32 h-32" /></div>
-                        <p className="text-xs mt-2 font-bold text-emerald-400 flex items-center gap-1"><ScanLine size={14} /> يرجى إبراز الرمز عند البوابة</p>
+                        <div className="bg-white p-2.5 rounded-2xl shadow-xl mb-3">
+                            <img src={`https://api.qrserver.com/v1/create-qr-code/?size=150x150&data=${appt.id}`} alt="QR" className="w-28 h-28" />
+                        </div>
+                        <p className="text-[10px] mt-1 font-bold text-blue-300 flex items-center gap-1"><ScanLine size={12} /> يرجى إبراز الرمز عند البوابة</p>
                     </>
                 )}
             </div>
+            {/* Bottom color bar */}
+            <div className="h-1.5 w-full bg-gradient-to-l from-blue-600 via-indigo-500 to-purple-600"></div>
         </div>
     );
 
@@ -511,32 +570,7 @@ const Inquiry: React.FC = () => {
 
     return (
         <div className="min-h-screen bg-[#f8fafc] pb-24 font-sans relative selection:bg-blue-200 selection:text-blue-900">
-            <div id="print-area" className="hidden" dir="rtl">
-                {/* ... (Print Templates Unchanged) ... */}
-                {printMode === 'certificate' && certificateData && (
-                    <div className="certificate-border text-center flex flex-col justify-between p-10 h-full bg-white relative">
-                        <div className="flex justify-between items-start mb-8 relative z-10">
-                            <div className="text-right text-xs font-bold"><p>المملكة العربية السعودية</p><p>وزارة التعليم</p><p>{SCHOOL_NAME}</p></div>
-                            <img src="https://www.raed.net/img?id=1474173" className="h-24 w-auto object-contain" alt="Logo" />
-                            <div className="text-left text-xs font-bold"><p>Kingdom of Saudi Arabia</p><p>Ministry of Education</p></div>
-                        </div>
-                        <div className="relative z-10 flex-1 flex flex-col justify-center">
-                            <h1 className="text-4xl font-extrabold text-slate-800 mb-2">شهادة شكر وتقدير</h1>
-                            <div className="w-1/3 h-1 bg-amber-400 mx-auto mb-8 rounded-full"></div>
-                            <p className="text-lg mb-6 leading-loose">تسر إدارة المدرسة ووكالة شؤون الطلاب أن تتقدم بخالص الشكر والتقدير للطالب:</p>
-                            <h2 className="text-3xl font-bold text-blue-900 mb-8 underline underline-offset-8 decoration-amber-400 decoration-4">{certificateData.studentName}</h2>
-                            <p className="text-lg mb-4">وذلك لتميزه في: <span className="font-bold">{certificateData.reason}</span></p>
-                            {certificateData.points && <div className="inline-block bg-slate-100 border border-slate-300 px-6 py-2 rounded-xl text-lg font-bold my-4">تم منحه {certificateData.points} نقاط تميز</div>}
-                            <p className="text-lg mt-6">متمنين له دوام التوفيق والنجاح.</p>
-                        </div>
-                        <div className="flex justify-between items-end mt-16 px-10 relative z-10">
-                            <div className="text-center"><p className="font-bold mb-4">وكيل شؤون الطلاب</p><p>.............................</p></div>
-                            <div className="text-center"><div className="w-24 h-24 border-2 border-slate-300 rounded-full flex items-center justify-center text-slate-300 font-bold mb-2">الختم</div></div>
-                            <div className="text-center"><p className="font-bold mb-4">مدير المدرسة</p><p>.............................</p></div>
-                        </div>
-                    </div>
-                )}
-            </div>
+            <div id="print-area" className="hidden" dir="rtl"></div>
 
             <div className="bg-white/80 backdrop-blur-xl sticky top-0 z-30 border-b border-slate-200/60 shadow-sm safe-area-top">
                 <div className="max-w-6xl mx-auto px-6 h-[4.5rem] flex items-center justify-between">
@@ -972,7 +1006,7 @@ const Inquiry: React.FC = () => {
                                                                     <div><p className="font-bold text-slate-800 text-sm">{obs.content.replace('تعزيز سلوكي: ', '').split('(')[0]}</p><p className="text-[10px] text-slate-400 mt-0.5">{obs.date} • {obs.staffName}</p></div>
                                                                 </div>
                                                             </div>
-                                                            <button onClick={() => handlePrintCertificate(obs)} className="text-xs bg-slate-800 text-white w-full py-2 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-slate-900 transition-colors"><Printer size={14} /> عرض وطباعة الشهادة</button>
+                                                            <button onClick={() => handlePrintCertificate(obs)} className="text-xs bg-gradient-to-r from-slate-800 to-slate-900 text-white w-full py-2.5 rounded-xl font-bold flex items-center justify-center gap-2 hover:from-blue-700 hover:to-indigo-700 transition-all shadow-md"><Award size={14} /> عرض الشهادة وتحميلها</button>
                                                         </div>
                                                     ))}
                                                 </div>
@@ -993,10 +1027,9 @@ const Inquiry: React.FC = () => {
                                                                 </div>
                                                                 <button onClick={() => {
                                                                     const reasonText = cert.type === 'attendance' ? 'انضباطه وعدم غيابه' : 'تفوقه العلمي والعملي';
-                                                                    setCertificateData({ studentName: selectedStudent!.name, reason: `${reasonText} طوال شهر ${cert.month}`, date: new Date(cert.createdAt).toLocaleDateString('ar-SA') });
-                                                                    setPrintMode('certificate');
-                                                                    setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
-                                                                }} className="w-full sm:w-auto text-xs bg-amber-50 text-amber-700 hover:bg-amber-100 hover:text-amber-800 py-2 px-4 rounded-lg font-bold flex items-center justify-center gap-2 transition-colors border border-amber-200"><Printer size={14} /> عرض وطباعة</button>
+                                                                    setCertificateData({ studentName: cert.studentName || selectedStudent!.name, reason: `${reasonText} طوال شهر ${cert.month}`, date: new Date(cert.createdAt).toLocaleDateString('ar-SA'), certType: cert.type });
+                                                                    setShowCertModal(true);
+                                                                }} className="w-full sm:w-auto text-xs bg-amber-500 text-white hover:bg-amber-600 py-2.5 px-5 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-md shadow-amber-500/20 border border-amber-400"><Award size={14} /> عرض وتحميل</button>
                                                             </div>
                                                         ))}
                                                     </div>
@@ -1082,7 +1115,7 @@ const Inquiry: React.FC = () => {
                                                 ) : certificates.map(cert => (
                                                     <div key={cert.id} className="relative p-6 rounded-3xl border border-slate-100 bg-white flex flex-col items-center group overflow-hidden hover:shadow-xl hover:-translate-y-1 transition-all text-center">
                                                         <div className={`absolute top-0 right-0 w-full h-2 ${cert.type === 'attendance' ? 'bg-gradient-to-l from-emerald-400 to-teal-400' : 'bg-gradient-to-l from-purple-400 to-pink-400'}`}></div>
-                                                        <div className={`w-20 h-20 rounded-full flex items-center justify-center mb-4 mt-2 shadow-inner border-4 border-white ring-2 ${cert.type === 'attendance' ? 'bg-emerald-50 text-emerald-600 ring-emerald-100' : 'bg-purple-50 text-purple-600 ring-purple-100'}`}>
+                                                        <div className="w-20 h-20 rounded-full flex items-center justify-center mb-4 mt-2 shadow-inner border-4 border-white ring-2 bg-purple-50 text-purple-600 ring-purple-100">
                                                             <Award size={40} className="group-hover:scale-110 transition-transform" />
                                                         </div>
                                                         <h4 className={`font-extrabold text-xl mb-1 ${cert.type === 'attendance' ? 'text-emerald-700' : 'text-purple-700'}`}>
@@ -1095,14 +1128,14 @@ const Inquiry: React.FC = () => {
                                                                 setCertificateData({
                                                                     studentName: cert.studentName,
                                                                     reason: cert.type === 'attendance' ? `انضباطه وعدم غيابه طوال شهر ${cert.month}` : `تفوقه العلمي والعملي طوال شهر ${cert.month}`,
-                                                                    date: new Date(cert.createdAt).toLocaleDateString('ar-SA')
+                                                                    date: new Date(cert.createdAt).toLocaleDateString('ar-SA'),
+                                                                    certType: cert.type
                                                                 });
-                                                                setPrintMode('certificate');
-                                                                setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
+                                                                setShowCertModal(true);
                                                             }}
                                                             className={`mt-auto w-full py-3 text-white font-bold rounded-xl text-sm flex items-center justify-center gap-2 transition-all shadow-md group-hover:shadow-lg ${cert.type === 'attendance' ? 'bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/20' : 'bg-purple-600 hover:bg-purple-700 shadow-purple-600/20'}`}
                                                         >
-                                                            <Printer size={18} /> عرض وطباعة الشهادة
+                                                            <Award size={18} /> عرض وتحميل الشهادة
                                                         </button>
                                                     </div>
                                                 ))}
@@ -1440,8 +1473,11 @@ const Inquiry: React.FC = () => {
                         {bookingSuccess ? (
                             <div className="relative w-full">
                                 <button onClick={() => { setShowBookingModal(false); setBookingSuccess(null) }} className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30"><X size={24} /></button>
-                                <VisitorPass appt={bookingSuccess} />
-                                <p className="text-center text-slate-500 text-xs mt-4">تم الحفظ</p>
+                                <VisitorPass appt={bookingSuccess} passRef={visitorPassRef} />
+                                <div className="flex gap-2 mt-4">
+                                    <button onClick={() => downloadElement(visitorPassRef, `بطاقة-زيارة-${bookingSuccess.parentName}`, false)} className="flex-1 bg-slate-700 hover:bg-slate-800 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"><Award size={16} /> حفظ صورة</button>
+                                    <button onClick={() => downloadElement(visitorPassRef, `بطاقة-زيارة-${bookingSuccess.parentName}`, true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20"><FileText size={16} /> تحميل PDF</button>
+                                </div>
                             </div>
                         ) : (
                             <form onSubmit={handleConfirmBooking} className="space-y-4">
@@ -1459,20 +1495,175 @@ const Inquiry: React.FC = () => {
                 <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/80 backdrop-blur-sm animate-fade-in">
                     <div className="relative w-full max-w-sm">
                         <button onClick={() => { setShowTicketModal(false); setSelectedTicket(null) }} className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30"><X size={24} /></button>
-                        <VisitorPass appt={selectedTicket} />
+                        <VisitorPass appt={selectedTicket} passRef={visitorPassRef} />
+                        <div className="flex gap-2 mt-4">
+                            <button onClick={() => downloadElement(visitorPassRef, `بطاقة-زيارة-${selectedTicket.parentName}`, false)} className="flex-1 bg-white/20 hover:bg-white/30 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all"><Award size={16} /> حفظ صورة</button>
+                            <button onClick={() => downloadElement(visitorPassRef, `بطاقة-زيارة-${selectedTicket.parentName}`, true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-500/20"><FileText size={16} /> تحميل PDF</button>
+                        </div>
                     </div>
                 </div>
             )}
 
-            {showDigitalId && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center p-6 bg-black/80 backdrop-blur-md animate-fade-in" onClick={() => setShowDigitalId(false)}>
-                    <div className="w-full max-w-sm aspect-[1.586/1] bg-gradient-to-br from-slate-900 via-blue-900 to-slate-900 rounded-3xl shadow-2xl relative overflow-hidden border border-white/10" onClick={e => e.stopPropagation()}>
-                        <div className="relative z-10 p-6 h-full flex flex-col justify-between">
-                            <div className="flex justify-between items-start"><div><p className="text-[10px] text-blue-200 font-bold tracking-widest uppercase mb-1">Student ID Card</p><h3 className="text-lg font-bold text-white leading-tight">{SCHOOL_NAME}</h3></div><img src={SCHOOL_LOGO} alt="Logo" className="w-10 h-10 object-contain bg-white/10 rounded-full p-1" /></div>
-                            <div className="flex items-end justify-between mt-auto">
-                                <div><p className="text-[10px] text-slate-400 font-bold uppercase mb-0.5">Name</p><p className="text-xl font-bold text-white mb-3 tracking-wide">{selectedStudent?.name}</p><div className="flex gap-4"><div><p className="text-[9px] text-slate-400 font-bold uppercase">ID</p><p className="text-sm font-mono text-blue-100">{selectedStudent?.studentId}</p></div><div><p className="text-[9px] text-slate-400 font-bold uppercase">Grade</p><p className="text-sm font-mono text-blue-100">{selectedStudent?.grade}</p></div></div></div>
-                                <div className="bg-white p-1.5 rounded-lg"><img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${selectedStudent?.studentId}`} className="w-16 h-16 mix-blend-multiply" alt="QR" /></div>
+            {showDigitalId && selectedStudent && (
+                <div className="fixed inset-0 z-50 flex flex-col items-center justify-center p-4 bg-black/85 backdrop-blur-md animate-fade-in" onClick={() => setShowDigitalId(false)}>
+                    <div className="relative" onClick={e => e.stopPropagation()}>
+                        {/* The Card */}
+                        <div ref={idCardRef} className="w-[340px] bg-gradient-to-br from-[#0a0f1e] via-[#0d1b3e] to-[#1a0a3e] rounded-[2rem] shadow-2xl relative overflow-hidden border border-white/10" style={{ fontFamily: 'Arial,sans-serif' }}>
+                            {/* Background glow effects */}
+                            <div className="absolute top-0 right-0 w-48 h-48 bg-blue-600/30 rounded-full blur-3xl -mr-10 -mt-10"></div>
+                            <div className="absolute bottom-0 left-0 w-40 h-40 bg-purple-600/20 rounded-full blur-3xl -ml-10 -mb-10"></div>
+                            {/* Chip + Logo row */}
+                            <div className="relative z-10 px-6 pt-6 pb-3 flex justify-between items-start">
+                                <div>
+                                    <p className="text-[9px] text-blue-300/80 font-bold uppercase tracking-[0.2em] mb-1">بطاقة الطالب الرقمية</p>
+                                    <p className="text-white font-extrabold text-xs leading-tight max-w-[160px]">{SCHOOL_NAME}</p>
+                                </div>
+                                <img src={SCHOOL_LOGO} alt="Logo" className="w-12 h-12 object-contain rounded-full bg-white/10 border border-white/20 p-1.5" />
                             </div>
+                            {/* Holographic strip */}
+                            <div className="relative z-10 mx-6 h-8 rounded-lg bg-gradient-to-r from-blue-500/30 via-purple-500/30 to-pink-500/30 border border-white/10 mb-4 flex items-center px-3">
+                                <div className="flex gap-1">{Array.from({ length: 6 }).map((_, i) => <div key={i} className="w-1.5 h-4 rounded-sm bg-white/20" style={{ transform: `skew(-15deg)`, opacity: 0.4 + i * 0.1 }}></div>)}</div>
+                            </div>
+                            {/* Student info */}
+                            <div className="relative z-10 px-6 pb-4">
+                                <p className="text-[9px] text-slate-400 font-bold uppercase tracking-widest mb-0.5">اسم الطالب</p>
+                                <p className="text-xl font-black text-white tracking-tight mb-4">{selectedStudent.name}</p>
+                                <div className="flex justify-between items-end">
+                                    <div className="space-y-2">
+                                        <div>
+                                            <p className="text-[9px] text-slate-400 font-bold uppercase">رقم الطالب</p>
+                                            <p className="text-sm font-mono text-blue-200 font-bold tracking-wider">{selectedStudent.studentId}</p>
+                                        </div>
+                                        <div>
+                                            <p className="text-[9px] text-slate-400 font-bold uppercase">الصف</p>
+                                            <p className="text-sm font-bold text-blue-100">{selectedStudent.grade} - {selectedStudent.className}</p>
+                                        </div>
+                                    </div>
+                                    <div className="bg-white p-1.5 rounded-xl shadow-inner">
+                                        <img src={`https://api.qrserver.com/v1/create-qr-code/?size=100x100&data=${selectedStudent.studentId}`} className="w-16 h-16" alt="QR" />
+                                    </div>
+                                </div>
+                            </div>
+                            {/* Bottom bar */}
+                            <div className="h-1.5 w-full bg-gradient-to-r from-blue-600 via-purple-500 to-pink-500"></div>
+                        </div>
+                        {/* Download Buttons */}
+                        <div className="flex gap-3 mt-4">
+                            <button onClick={() => downloadElement(idCardRef, `هوية-${selectedStudent.name}`, false)} className="flex-1 bg-white/15 hover:bg-white/25 text-white py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all backdrop-blur-sm border border-white/20">
+                                <Award size={16} /> حفظ كصورة
+                            </button>
+                            <button onClick={() => downloadElement(idCardRef, `هوية-${selectedStudent.name}`, true)} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-blue-700/30">
+                                <FileText size={16} /> تحميل PDF
+                            </button>
+                        </div>
+                        <button onClick={() => setShowDigitalId(false)} className="mt-3 w-full text-white/60 hover:text-white text-xs font-bold py-2 transition-colors">إغلاق</button>
+                    </div>
+                </div>
+            )}
+
+            {/* ===== CERTIFICATE MODAL ===== */}
+            {showCertModal && certificateData && (
+                <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-black/80 backdrop-blur-md animate-fade-in" onClick={() => setShowCertModal(false)}>
+                    <div className="relative w-full max-w-2xl" onClick={e => e.stopPropagation()}>
+                        <button onClick={() => setShowCertModal(false)} className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30 z-10"><X size={24} /></button>
+
+                        {/* Certificate itself (capturable) */}
+                        <div ref={certModalRef} className="bg-white rounded-3xl overflow-hidden shadow-2xl" style={{ fontFamily: 'Georgia, serif' }}>
+                            {/* Gold top border */}
+                            <div className="h-3 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400"></div>
+
+                            {/* Header */}
+                            <div className="bg-gradient-to-b from-slate-900 to-blue-950 text-white p-8 text-center relative overflow-hidden">
+                                <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] opacity-5"></div>
+                                <div className="relative z-10 flex justify-between items-start">
+                                    <div className="text-right text-xs font-bold leading-relaxed opacity-80" style={{ fontFamily: 'Arial' }}>
+                                        <p>المملكة العربية السعودية</p>
+                                        <p>وزارة التعليم</p>
+                                    </div>
+                                    <img src={SCHOOL_LOGO} className="w-16 h-16 mx-auto object-contain drop-shadow-2xl" alt="Logo" />
+                                    <div className="text-left text-xs leading-relaxed opacity-80" style={{ fontFamily: 'Arial' }}>
+                                        <p>Kingdom of Saudi Arabia</p>
+                                        <p>Ministry of Education</p>
+                                    </div>
+                                </div>
+                                <p className="text-amber-300 text-xs font-bold tracking-[0.3em] uppercase mt-4 opacity-90" style={{ fontFamily: 'Arial' }}>{SCHOOL_NAME}</p>
+                            </div>
+
+                            {/* Body */}
+                            <div className="p-10 text-center bg-white relative">
+                                {/* Watermark */}
+                                <div className="absolute inset-0 flex items-center justify-center opacity-[0.03] pointer-events-none">
+                                    <img src={SCHOOL_LOGO} className="w-64 h-64 object-contain" alt="" />
+                                </div>
+                                {/* Corner ornaments */}
+                                <div className="absolute top-4 right-4 w-8 h-8 border-t-2 border-r-2 border-amber-400 rounded-tr-lg"></div>
+                                <div className="absolute top-4 left-4 w-8 h-8 border-t-2 border-l-2 border-amber-400 rounded-tl-lg"></div>
+                                <div className="absolute bottom-4 right-4 w-8 h-8 border-b-2 border-r-2 border-amber-400 rounded-br-lg"></div>
+                                <div className="absolute bottom-4 left-4 w-8 h-8 border-b-2 border-l-2 border-amber-400 rounded-bl-lg"></div>
+
+                                <div className="relative z-10">
+                                    <h1 className="text-3xl font-black text-slate-800 mb-2" style={{ fontFamily: 'Arial' }}>
+                                        {certificateData.certType === 'attendance' ? 'شهادة انتظام ومواظبة' : 'شهادة شكر وتقدير'}
+                                    </h1>
+                                    <div className="flex items-center justify-center gap-3 mb-8">
+                                        <div className="h-px flex-1 bg-gradient-to-l from-amber-400 to-transparent"></div>
+                                        <div className="w-2 h-2 bg-amber-400 rounded-full"></div>
+                                        <div className="h-px flex-1 bg-gradient-to-r from-amber-400 to-transparent"></div>
+                                    </div>
+
+                                    <p className="text-base text-slate-600 mb-4 leading-loose" style={{ fontFamily: 'Arial' }}>تسر إدارة المدرسة أن تتقدم بخالص الشكر والتقدير للطالب المتميز:</p>
+                                    <h2 className="text-4xl font-black text-blue-900 mb-8" style={{ fontFamily: 'Arial', textDecoration: 'underline', textDecorationColor: '#f59e0b', textUnderlineOffset: '8px' }}>{certificateData.studentName}</h2>
+
+                                    <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-2xl px-8 py-4 inline-block mb-6">
+                                        <p className="text-base text-slate-700 font-bold" style={{ fontFamily: 'Arial' }}>وذلك لـ <span className="text-blue-800">{certificateData.reason}</span></p>
+                                    </div>
+
+                                    {certificateData.points && (
+                                        <div className="flex items-center justify-center gap-2 mb-6">
+                                            <div className="bg-amber-100 text-amber-800 border border-amber-300 px-6 py-2 rounded-full text-base font-bold" style={{ fontFamily: 'Arial' }}>
+                                                🏆 نقاط التميز: {certificateData.points}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    <p className="text-sm text-slate-500 mb-10" style={{ fontFamily: 'Arial' }}>متمنين له دوام التوفيق والنجاح في مسيرته التعليمية.</p>
+
+                                    {/* Signatures */}
+                                    <div className="flex justify-between items-end mt-4 pt-6 border-t border-slate-100">
+                                        <div className="text-center">
+                                            <div className="w-20 border-b border-slate-400 mx-auto mb-2"></div>
+                                            <p className="text-xs font-black text-slate-700" style={{ fontFamily: 'Arial' }}>وكيل شؤون الطلاب</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="w-16 h-16 border-2 border-slate-300 rounded-full flex items-center justify-center text-slate-300 text-xs font-bold mx-auto mb-2" style={{ fontFamily: 'Arial' }}>الختم</div>
+                                            <p className="text-[10px] text-slate-400" style={{ fontFamily: 'Arial' }}>{certificateData.date}</p>
+                                        </div>
+                                        <div className="text-center">
+                                            <div className="w-20 border-b border-slate-400 mx-auto mb-2"></div>
+                                            <p className="text-xs font-black text-slate-700" style={{ fontFamily: 'Arial' }}>{MANAGER_NAME}</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            {/* Gold bottom border */}
+                            <div className="h-3 bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-400"></div>
+                        </div>
+
+                        {/* Action Buttons */}
+                        <div className="flex gap-3 mt-4">
+                            <button
+                                onClick={() => downloadElement(certModalRef, `شهادة-${certificateData.studentName}`, false)}
+                                className="flex-1 bg-white/15 hover:bg-white/25 text-white py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all backdrop-blur-sm border border-white/20"
+                            >
+                                <Award size={18} /> حفظ كصورة PNG
+                            </button>
+                            <button
+                                onClick={() => downloadElement(certModalRef, `شهادة-${certificateData.studentName}`, true)}
+                                className="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-3 rounded-2xl text-sm font-bold flex items-center justify-center gap-2 transition-all shadow-lg shadow-amber-500/30"
+                            >
+                                <FileText size={18} /> تحميل كـ PDF
+                            </button>
                         </div>
                     </div>
                 </div>
