@@ -1014,30 +1014,6 @@ export const getMyExitPermissions = async (studentIds: string[]): Promise<ExitPe
     }));
 };
 
-export const completeExitPermission = async (id: string) => {
-    await supabase.from('exit_permissions').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id);
-};
-
-export const getExitPermissionById = async (id: string): Promise<ExitPermission | null> => {
-    const { data, error } = await supabase.from('exit_permissions').select('*').eq('id', id).single();
-    if (error || !data) return null;
-    return {
-        id: data.id,
-        studentId: data.student_id,
-        studentName: data.student_name,
-        grade: data.grade,
-        className: data.class_name,
-        parentName: data.parent_name,
-        parentPhone: data.parent_phone,
-        reason: data.reason,
-        createdBy: data.created_by,
-        createdByName: data.created_by_name,
-        status: data.status,
-        createdAt: data.created_at,
-        completedAt: data.completed_at
-    };
-};
-
 // --- Referrals & Guidance ---
 
 export const getReferrals = async (): Promise<Referral[]> => {
