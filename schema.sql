@@ -289,3 +289,21 @@ CREATE TABLE IF NOT EXISTS public.daily_academic_logs (
     "teacherName" TEXT NOT NULL,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
+
+-- School Settings Table (global config synced across all devices)
+CREATE TABLE IF NOT EXISTS public.school_settings (
+    id INTEGER PRIMARY KEY DEFAULT 1,
+    school_name TEXT NOT NULL DEFAULT 'المدرسة',
+    school_logo TEXT DEFAULT 'https://www.raed.net/img?id=1471924',
+    manager_name TEXT DEFAULT 'مدير المدرسة',
+    whatsapp_enabled BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    -- Ensure only one row exists
+    CONSTRAINT single_row CHECK (id = 1)
+);
+
+-- Insert default row if not exists
+INSERT INTO public.school_settings (id, school_name, manager_name)
+VALUES (1, 'المدرسة', 'مدير المدرسة')
+ON CONFLICT (id) DO NOTHING;
+

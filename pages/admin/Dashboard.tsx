@@ -16,7 +16,7 @@ import {
     getStudentObservations, getReferrals, updateReferralStatus, getAdminInsights,
     sendBatchNotifications, generateTeacherAbsenceSummary, sendPendingReferralReminders,
     extractTextFromFile, getAllParentIds, getSchoolPlans, updateSchoolPlan, initSchoolPlans,
-    getSchoolFeedback, replyToSchoolFeedback, logWorkflowAction
+    getSchoolFeedback, replyToSchoolFeedback, logWorkflowAction, getSchoolSettings, saveSchoolSettings
 } from '../../services/storage';
 import { ExcuseRequest, Student, BehaviorRecord, AttendanceRecord, SchoolNews, Appointment, AppointmentSlot, StaffUser, ExitPermission, StudentObservation, Referral, AdminInsight, ActivityPermission, SchoolPlan, SchoolFeedback } from '../../types';
 import { getActivities, updateActivity } from '../../services/storage';
@@ -114,6 +114,15 @@ const Dashboard: React.FC = () => {
     const fetchData = async () => {
         setDataLoading(true);
         try {
+            // Load school settings from Supabase first (syncs across all devices)
+            const settings = await getSchoolSettings();
+            setSchoolName(settings.schoolName);
+            setSchoolLogo(settings.schoolLogo);
+            setTempSchoolName(settings.schoolName);
+            setTempSchoolLogo(settings.schoolLogo);
+            setTempManagerName(settings.managerName);
+            setWhatsAppEnabled(settings.whatsappEnabled);
+
             await initSchoolPlans();
             const [reqs, studs, behaviors, atts, news, apps, obs, refs, risks, slts, exits, dirs, users, context, acts, plans, feds] = await Promise.all([
                 getRequests(),
@@ -161,6 +170,7 @@ const Dashboard: React.FC = () => {
 
     useEffect(() => { fetchData(); }, [apptDate]);
 
+
     // --- STATS LOGIC ---
     const stats = useMemo(() => {
         const todayStr = apptDate;
@@ -188,15 +198,21 @@ const Dashboard: React.FC = () => {
     }, [requests, students, attendanceRecords, behaviorRecords, todaysExits, appointmentsList, apptDate]);
 
     // --- HANDLERS ---
-    const handleSaveSettings = () => {
-        localStorage.setItem('school_name', tempSchoolName);
-        localStorage.setItem('school_logo', tempSchoolLogo);
-        localStorage.setItem('school_manager_name', tempManagerName);
-        localStorage.setItem('whatsapp_integration', whatsAppEnabled ? 'true' : 'false');
-        setSchoolName(tempSchoolName);
-        setSchoolLogo(tempSchoolLogo);
-        alert("تم حفظ الإعدادات بنجاح! سيتم تحديث النظام.");
-        window.location.reload();
+    const handleSaveSettings = async () => {
+        try {
+            await saveSchoolSettings({
+                schoolName: tempSchoolName,
+                schoolLogo: tempSchoolLogo,
+                managerName: tempManagerName,
+                whatsappEnabled: whatsAppEnabled,
+            });
+            setSchoolName(tempSchoolName);
+            setSchoolLogo(tempSchoolLogo);
+            alert('تم حفظ الإعدادات بنجاح وسيتم تحديثها على جميع الأجهزة!');
+            window.location.reload();
+        } catch (e: any) {
+            alert('حدث خطأ: ' + e.message);
+        }
     };
 
     const handleSaveBotContext = async () => {

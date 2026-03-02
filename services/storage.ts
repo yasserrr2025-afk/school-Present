@@ -1685,3 +1685,79 @@ export const getDailyAcademicLogs = async (studentId?: string, date?: string, te
         createdAt: d.created_at
     }));
 };
+
+// --- School Settings (global, synced via Supabase) ---
+
+export interface SchoolSettings {
+    schoolName: string;
+    schoolLogo: string;
+    managerName: string;
+    whatsappEnabled: boolean;
+}
+
+const DEFAULT_SETTINGS: SchoolSettings = {
+    schoolName: 'المدرسة',
+    schoolLogo: 'https://www.raed.net/img?id=1471924',
+    managerName: 'مدير المدرسة',
+    whatsappEnabled: false,
+};
+
+/** Load settings: fetches from Supabase and caches locally. Falls back to localStorage. */
+export const getSchoolSettings = async (): Promise<SchoolSettings> => {
+    try {
+        const { data, error } = await supabase
+            .from('school_settings')
+            .select('*')
+            .eq('id', 1)
+            .single();
+
+        if (!error && data) {
+            const settings: SchoolSettings = {
+                schoolName: data.school_name || DEFAULT_SETTINGS.schoolName,
+                schoolLogo: data.school_logo || DEFAULT_SETTINGS.schoolLogo,
+                managerName: data.manager_name || DEFAULT_SETTINGS.managerName,
+                whatsappEnabled: data.whatsapp_enabled ?? false,
+            };
+            // Cache locally for offline/fast access
+            localStorage.setItem('school_name', settings.schoolName);
+            localStorage.setItem('school_logo', settings.schoolLogo);
+            localStorage.setItem('school_manager_name', settings.managerName);
+            localStorage.setItem('whatsapp_integration', settings.whatsappEnabled ? 'true' : 'false');
+            return settings;
+        }
+    } catch (e) {
+        console.warn('Could not fetch school settings from Supabase, using localStorage fallback.');
+    }
+    // Fallback to localStorage cache
+    return {
+        schoolName: localStorage.getItem('school_name') || DEFAULT_SETTINGS.schoolName,
+        schoolLogo: localStorage.getItem('school_logo') || DEFAULT_SETTINGS.schoolLogo,
+        managerName: localStorage.getItem('school_manager_name') || DEFAULT_SETTINGS.managerName,
+        whatsappEnabled: localStorage.getItem('whatsapp_integration') === 'true',
+    };
+};
+
+/** Save settings to both Supabase (for all devices) and localStorage (for instant access). */
+export const saveSchoolSettings = async (settings: SchoolSettings): Promise<void> => {
+    // Always save to localStorage for instant access
+    localStorage.setItem('school_name', settings.schoolName);
+    localStorage.setItem('school_logo', settings.schoolLogo);
+    localStorage.setItem('school_manager_name', settings.managerName);
+    localStorage.setItem('whatsapp_integration', settings.whatsappEnabled ? 'true' : 'false');
+
+    // Upsert to Supabase so all devices get updated
+    const { error } = await supabase.from('school_settings').upsert({
+        id: 1,
+        school_name: settings.schoolName,
+        school_logo: settings.schoolLogo,
+        manager_name: settings.managerName,
+        whatsapp_enabled: settings.whatsappEnabled,
+        updated_at: new Date().toISOString(),
+    }, { onConflict: 'id' });
+
+    if (error) {
+        console.error('Failed to save settings to Supabase:', error.message);
+        throw new Error('فشل حفظ الإعدادات في قاعدة البيانات: ' + error.message);
+    }
+};
+
