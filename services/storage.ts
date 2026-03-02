@@ -629,7 +629,11 @@ export const getAvailableClassesForGrade = async (grade: string): Promise<string
 };
 
 export const getExistingGrades = async (): Promise<string[]> => {
-    return GRADES;
+    const { data, error } = await supabase.from('students').select('grade');
+    if (error || !data) return [];
+    const rows = data as any[];
+    const gradeNames = rows.map((item: any) => item.grade as string).filter((g): g is string => !!g);
+    return Array.from(new Set(gradeNames)).sort();
 };
 
 // --- Notifications ---
