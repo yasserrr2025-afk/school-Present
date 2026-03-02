@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import * as ReactRouterDOM from 'react-router-dom';
 import { FileText, Search, ArrowLeft, ShieldCheck, Users, School, Megaphone, Calendar, ChevronLeft, Bell, Briefcase, Sparkles } from 'lucide-react';
-import { getSchoolNews } from '../services/storage';
+import { getSchoolNews, getSchoolSettings } from '../services/storage';
 import { SchoolNews } from '../types';
 
 const { Link } = ReactRouterDOM as any;
@@ -10,23 +10,32 @@ const Home: React.FC = () => {
     const [urgentNews, setUrgentNews] = useState<SchoolNews[]>([]);
     const [regularNews, setRegularNews] = useState<SchoolNews[]>([]);
     const [loading, setLoading] = useState(true);
+    const [schoolName, setSchoolName] = useState(localStorage.getItem('school_name') || 'المدرسة');
+    const [schoolLogo, setSchoolLogo] = useState(localStorage.getItem('school_logo') || 'https://www.raed.net/img?id=1471924');
 
-    const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
-    const SCHOOL_LOGO = localStorage.getItem('school_logo') || "https://www.raed.net/img?id=1471924";
+    // Keep old names for compatibility with JSX below
+    const SCHOOL_NAME = schoolName;
+    const SCHOOL_LOGO = schoolLogo;
 
     useEffect(() => {
-        const fetchNews = async () => {
+        const fetchAll = async () => {
             try {
-                const data = await getSchoolNews();
+                // Fetch settings from Supabase so new devices get correct logo/name
+                const [settings, data] = await Promise.all([
+                    getSchoolSettings(),
+                    getSchoolNews()
+                ]);
+                setSchoolName(settings.schoolName);
+                setSchoolLogo(settings.schoolLogo);
                 setUrgentNews(data.filter(n => n.isUrgent));
                 setRegularNews(data.filter(n => !n.isUrgent));
             } catch (e) {
-                console.error("Failed to load news", e);
+                console.error('Failed to load page data', e);
             } finally {
                 setLoading(false);
             }
         };
-        fetchNews();
+        fetchAll();
     }, []);
 
     return (

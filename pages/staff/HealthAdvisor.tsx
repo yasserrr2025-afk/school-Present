@@ -1,7 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getStudents, getClinicVisits, addClinicVisit } from '../../services/storage';
 import { Student, ClinicVisit } from '../../types';
 import { Activity, Search, ShieldAlert, HeartPulse, Stethoscope, Loader2, Hospital, Printer, CheckCircle } from 'lucide-react';
+import { PrintReport, triggerPrint } from '../../components/PrintReport';
 
 const HealthAdvisor: React.FC = () => {
     const [students, setStudents] = useState<Student[]>([]);
@@ -72,58 +73,17 @@ const HealthAdvisor: React.FC = () => {
         }
     };
 
+    // Each visit has its own print div ID
+    const [printVisit, setPrintVisit] = useState<ClinicVisit | null>(null);
+
     const handlePrint = (visit: ClinicVisit) => {
-        const printWindow = window.open('', '', 'width=800,height=600');
-        if (!printWindow) return alert('يرجى السماح بالنوافذ المنبثقة للطباعة');
+        setPrintVisit(visit);
+        setTimeout(() => triggerPrint('health-single-visit', () => setPrintVisit(null)), 100);
+    };
 
-        const html = `
-      <html dir="rtl">
-        <head>
-          <title>تقرير زيارة عيادة مدرسية</title>
-          <style>
-            body { font-family: 'Arial', sans-serif; padding: 40px; color: #333; line-height: 1.6; }
-            .header { text-align: center; border-bottom: 2px solid #2563eb; padding-bottom: 20px; margin-bottom: 30px; }
-            .logo-placeholder { width: 80px; height: 80px; background: #f0fdf4; border: 2px dashed #16a34a; border-radius: 50%; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; color: #16a34a; font-size: 24px; font-weight: bold; }
-            h1 { color: #1e3a8a; margin: 0; font-size: 24px; }
-            .content { font-size: 16px; margin-top: 20px; }
-            .row { display: flex; margin-bottom: 15px; border-bottom: 1px dashed #ccc; padding-bottom: 5px; }
-            .label { font-weight: bold; width: 150px; color: #475569; }
-            .value { flex: 1; color: #0f172a; font-weight: bold; }
-            .footer { margin-top: 50px; display: flex; justify-content: space-between; font-weight: bold; }
-            .alert { background: #fef2f2; border: 1px solid #fecaca; color: #b91c1c; padding: 10px; border-radius: 8px; font-weight: bold; text-align: center; margin-top: 20px; }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="logo-placeholder">⚕️</div>
-            <h1>تقرير زيارة العيادة المدرسية</h1>
-            <p>تاريخ الزيارة: ${visit.date}</p>
-          </div>
-          
-          <div class="content">
-            <div class="row"><div class="label">اسم الطالب:</div><div class="value">${visit.studentName}</div></div>
-            <div class="row"><div class="label">الرقم الأكاديمي:</div><div class="value">${visit.studentId}</div></div>
-            <div class="row"><div class="label">الصف والفصل:</div><div class="value">${visit.grade} - ${visit.className}</div></div>
-            <div class="row"><div class="label">الأعراض الظاهرة:</div><div class="value">${visit.symptoms}</div></div>
-            <div class="row"><div class="label">الإجراء المتخذ:</div><div class="value">${visit.actionTaken}</div></div>
-            <div class="row"><div class="label">ملاحظات إضافية:</div><div class="value">${visit.notes || 'لا يوجد'}</div></div>
-          </div>
-
-          ${visit.sentHome ? `<div class="alert">⚠️ قرار الموجه الصحي: مغادرة الطالب للمدرسة (تم إنشاء تصريح خروج وعذر غياب آلياً)</div>` : ''}
-
-          <div class="footer">
-            <div>توقيع الموجه الصحي:<br>....................</div>
-            <div>ختم العيادة:<br>....................</div>
-          </div>
-
-          <script>
-            window.onload = () => { window.print(); window.close(); }
-          </script>
-        </body>
-      </html>
-    `;
-        printWindow.document.write(html);
-        printWindow.document.close();
+    const handlePrintDailyReport = () => {
+        const today = new Date().toISOString().split('T')[0];
+        triggerPrint('health-daily-report');
     };
 
     const filteredStudents = students.filter(s =>
@@ -131,7 +91,50 @@ const HealthAdvisor: React.FC = () => {
     );
 
     return (
-        <div className="space-y-6 pb-12 animate-fade-in">
+        <div className="space-y-6 pb-12 animate-fade-in" dir="rtl">
+
+            {/* ====== PRINT: Single Visit Report ====== */}
+            {printVisit && (
+                <PrintReport
+                    id="health-single-visit"
+                    title="تقرير زيارة العيادة المدرسية"
+                    subTitle={`طالب: ${printVisit.studentName} | ${printVisit.grade} - ${printVisit.className}`}
+                    date={printVisit.date}
+                    columns={[
+                        { key: 'studentName', label: 'اسم الطالب' },
+                        { key: 'grade', label: 'الصف', width: '80px' },
+                        { key: 'symptoms', label: 'الأعراض' },
+                        { key: 'actionTaken', label: 'الإجراء المتخذ' },
+                        { key: 'notes', label: 'الملاحظات' },
+                        { key: 'sentHome', label: 'تحويل للمنزل', width: '100px', render: (row) => row.sentHome ? 'نعم ⚠️' : 'لا' },
+                    ]}
+                    data={[printVisit]}
+                    department="العيادة المدرسية - الموجه الصحي"
+                    footerNote="توقيع الموجه الصحي: ...................."
+                />
+            )}
+
+            {/* ====== PRINT: Daily Clinic Report ====== */}
+            <PrintReport
+                id="health-daily-report"
+                title="تقرير العيادة المدرسية اليومي"
+                date={new Date().toLocaleDateString('ar-SA')}
+                stats={[
+                    { label: 'محوّلون للمنزل', value: visits.filter(v => v.date === new Date().toISOString().split('T')[0] && v.sentHome).length },
+                    { label: 'مراجعات اليوم', value: visits.filter(v => v.date === new Date().toISOString().split('T')[0]).length },
+                ]}
+                columns={[
+                    { key: 'studentName', label: 'اسم الطالب' },
+                    { key: 'grade', label: 'الصف', width: '70px' },
+                    { key: 'className', label: 'الفصل', width: '70px' },
+                    { key: 'symptoms', label: 'الأعراض' },
+                    { key: 'actionTaken', label: 'الإجراء' },
+                    { key: 'sentHome', label: 'تحويل', width: '70px', render: (row) => row.sentHome ? '✓ نعم' : 'لا' },
+                ]}
+                data={visits.filter(v => v.date === new Date().toISOString().split('T')[0])}
+                department="العيادة المدرسية"
+            />
+
             {/* Header */}
             <div className="bg-white rounded-3xl p-6 border border-emerald-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 relative overflow-hidden">
                 <div className="absolute left-0 top-0 w-32 h-32 bg-emerald-50 rounded-full blur-3xl -z-10 -translate-x-1/2 -translate-y-1/2"></div>
@@ -185,7 +188,12 @@ const HealthAdvisor: React.FC = () => {
                 <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col h-[600px]">
                     <div className="p-4 border-b border-slate-100 bg-slate-50/50 rounded-t-3xl flex justify-between items-center">
                         <h2 className="font-extrabold text-slate-800 text-sm flex items-center gap-2"><Stethoscope size={16} className="text-emerald-500" /> سجل زيارات العيادة الأحدث</h2>
-                        <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">{visits.length} زيارة</span>
+                        <div className="flex items-center gap-2">
+                            <span className="text-xs font-bold bg-emerald-100 text-emerald-800 px-3 py-1 rounded-full">{visits.length} زيارة</span>
+                            <button onClick={handlePrintDailyReport} className="bg-emerald-600 text-white px-3 py-1.5 rounded-xl text-xs font-bold flex items-center gap-1.5 hover:bg-emerald-700">
+                                <Printer size={13} /> تقرير اليوم
+                            </button>
+                        </div>
                     </div>
                     <div className="p-4 flex-1 overflow-y-auto space-y-3 custom-scrollbar">
                         {visits.length === 0 ? (

@@ -6,7 +6,7 @@ import {
     Trash2, Edit, ArrowRight, LayoutGrid, FileText, School, Inbox, ChevronLeft,
     Calendar, AlertCircle, PieChart as PieIcon, List, Activity, ShieldAlert, Gavel, Forward, CheckCircle, Phone, Clock,
     Medal, Star, ClipboardList, GitCommit, Eye, ArrowUpRight, CheckSquare, FileBadge, PenTool, Wand2, ChevronRight, Gavel as HammerIcon,
-    AlertOctagon, History, Trophy, MessageCircle, MoreHorizontal, UserX, UserCheck, Flame, BookOpen
+    AlertOctagon, History, Trophy, MessageCircle, MoreHorizontal, UserX, UserCheck, Flame, BookOpen, LogOut
 } from 'lucide-react';
 import {
     getStudents,
@@ -30,12 +30,15 @@ import {
     deleteStudentObservation,
     getAttendanceRecords,
     logWorkflowAction,
-    getDailyAcademicLogs
+    getDailyAcademicLogs,
+    getExitPermissions,
+    updateExitPermissionStatus
 } from '../../services/storage';
-import { Student, BehaviorRecord, StaffUser, Referral, StudentObservation, AttendanceRecord, AttendanceStatus, DailyAcademicLog } from '../../types';
+import { Student, BehaviorRecord, StaffUser, Referral, StudentObservation, AttendanceRecord, AttendanceStatus, DailyAcademicLog, ExitPermission } from '../../types';
 import { BEHAVIOR_VIOLATIONS, GRADES } from '../../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area } from 'recharts';
 import AttendanceMonitor from './AttendanceMonitor';
+import { PrintReport, triggerPrint } from '../../components/PrintReport';
 
 // --- Official Header Component (Print Only) ---
 const OfficialHeader = ({ schoolName, subTitle }: { schoolName: string, subTitle: string }) => (
@@ -67,11 +70,15 @@ const OfficialHeader = ({ schoolName, subTitle }: { schoolName: string, subTitle
 
 const StaffDeputy: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<StaffUser | null>(null);
-    const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
+    const SCHOOL_NAME = localStorage.getItem('school_name') || 'المدرسة';
 
     // Navigation View State
-    const [activeView, setActiveView] = useState<'dashboard' | 'attendance' | 'referrals' | 'log' | 'positive' | 'academic_logs'>('dashboard');
+    const [activeView, setActiveView] = useState<'dashboard' | 'attendance' | 'referrals' | 'log' | 'positive' | 'academic_logs' | 'exit_approvals'>('dashboard');
     const [referralFilter, setReferralFilter] = useState<'all' | 'pending' | 'in_progress' | 'resolved'>('all');
+
+    // Exit Permission Approvals
+    const [pendingExits, setPendingExits] = useState<ExitPermission[]>([]);
+    const [isApprovingExit, setIsApprovingExit] = useState<string | null>(null);
 
     // --- Direct Referral Modal State ---
     const [showDirectReferralModal, setShowDirectReferralModal] = useState(false);
@@ -144,14 +151,16 @@ const StaffDeputy: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [s, r, refs, risks, obs, att, acLogs] = await Promise.all([
+            const today = new Date().toISOString().split('T')[0];
+            const [s, r, refs, risks, obs, att, acLogs, exits] = await Promise.all([
                 getStudents(),
                 getBehaviorRecords(),
                 getReferrals(),
                 getConsecutiveAbsences(),
                 getStudentObservations(),
                 getAttendanceRecords(),
-                getDailyAcademicLogs()
+                getDailyAcademicLogs(),
+                getExitPermissions(today)
             ]);
             setStudents(s);
             setRecords(r);
@@ -160,6 +169,7 @@ const StaffDeputy: React.FC = () => {
             setAllObservations(obs);
             setAttendanceRecords(att);
             setAcademicLogs(acLogs);
+            setPendingExits(exits.filter(e => e.status === 'pending_approval'));
         } catch (e) {
             console.error(e);
         } finally {
@@ -579,13 +589,11 @@ const StaffDeputy: React.FC = () => {
     };
 
     const handlePrintDailyViolations = () => {
-        setPrintMode('daily_violation_report');
-        setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
+        triggerPrint('deputy-daily-violations', undefined);
     };
 
     const handlePrintFullLog = () => {
-        setPrintMode('full_violation_log');
-        setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
+        triggerPrint('deputy-full-log', undefined);
     };
 
     const filteredPositiveObservations = useMemo(() => {
@@ -618,41 +626,105 @@ const StaffDeputy: React.FC = () => {
 
     return (
         <>
-            <div id="print-container" className="hidden print:block text-[14px] leading-relaxed" dir="rtl">
-                {/* ... Print Logic Remains the same ... */}
-                <div className="print-page-a4">
-                    <img src="https://www.raed.net/img?id=1474173" className="print-watermark" alt="Watermark" />
-
-                    {(printMode === 'commitment' || printMode === 'summons') && recordToPrint && (
-                        <div>
-                            <OfficialHeader schoolName={SCHOOL_NAME} subTitle="وكالة شؤون الطلاب" />
-                            <div className="mt-8 px-4 relative z-10">
-                                <h1 className="official-title">{printMode === 'commitment' ? 'تعهد خطي (انضباطي)' : 'خطاب استدعاء ولي أمر'}</h1>
-                                {printMode === 'commitment' ? (
-                                    <div className="text-right space-y-6 text-lg font-medium mt-6">
-                                        <p>أقر أنا الطالب/ة: <strong>{recordToPrint.studentName}</strong> بالصف: <strong>{recordToPrint.grade} - {recordToPrint.className}</strong></p>
-                                        <p>بأنني قمت بالمخالفة التالية:</p>
-                                        <div className="bg-gray-50 border-2 border-black p-4 text-center font-bold text-xl my-4">{recordToPrint.violationName}</div>
-                                        <p className="leading-loose text-justify">وأتعهد بعدم تكرار هذا السلوك مستقبلاً، والالتزام بالأنظمة والتعليمات المدرسية.</p>
-                                    </div>
-                                ) : (
-                                    <div className="text-lg leading-loose space-y-6 font-medium mt-6 text-justify">
-                                        <p>المكرم ولي أمر الطالب.. وفقه الله</p>
-                                        <p>نفيدكم بأنه تم رصد ملاحظات انضباطية/سلوكية على ابنكم <strong>({recordToPrint.studentName})</strong>، والمتمثلة في: <strong>{recordToPrint.violationName}</strong>.</p>
-                                        <p>نأمل حضوركم للمدرسة يوم ..................... الموافق ..................... لمناقشة وضع الطالب.</p>
-                                    </div>
-                                )}
-                                <div className="mt-16 flex justify-between px-8">
-                                    <div className="text-center"><p className="font-bold mb-8">ولي الأمر</p><p>.............................</p></div>
-                                    <div className="text-center"><p className="font-bold mb-8">وكيل شؤون الطلاب</p><p>{currentUser?.name}</p></div>
+            {/* ====== PRINT: Formal Letters (Commitment / Summons) ====== */}
+            <div id="print-letters" className="hidden" dir="rtl" style={{ fontFamily: 'Arial, sans-serif' }}>
+                <style>{`
+                    @media print {
+                        body * { visibility: hidden; }
+                        #print-letters, #print-letters * { visibility: visible; }
+                        #print-letters { position: fixed; left: 0; top: 0; width: 100%; padding: 24px; background: white; z-index: 99999; display: block !important; }
+                        .no-print { display: none !important; }
+                    }
+                `}</style>
+                {(printMode === 'commitment' || printMode === 'summons') && recordToPrint && (
+                    <div>
+                        {/* Official Header */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '4px solid #1e293b', paddingBottom: '12px', marginBottom: '20px' }}>
+                            <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 'bold', lineHeight: '1.8' }}>
+                                <div>المملكة العربية السعودية</div>
+                                <div>وزارة التعليم</div>
+                                <div style={{ fontSize: '15px' }}>{SCHOOL_NAME}</div>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <img src={localStorage.getItem('school_logo') || 'https://www.raed.net/img?id=1471924'} alt="Logo" style={{ height: '80px', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
+                                <div style={{ fontWeight: '900', fontSize: '17px', marginTop: '8px' }}>
+                                    {printMode === 'commitment' ? 'تعهد خطي (انضباطي)' : 'خطاب استدعاء ولي أمر'}
                                 </div>
                             </div>
+                            <div style={{ textAlign: 'left', fontSize: '12px', fontWeight: 'bold', lineHeight: '1.8' }}>
+                                <div>وكالة شؤون الطلاب</div>
+                                <div>{new Date().toLocaleDateString('ar-SA')}</div>
+                            </div>
                         </div>
-                    )}
 
-                    {/* ... Other Print Modes ... */}
-                </div>
+                        {printMode === 'commitment' ? (
+                            <div style={{ textAlign: 'right', fontSize: '16px', lineHeight: '2', padding: '0 16px' }}>
+                                <p>أقر أنا الطالب/ة: <strong>{recordToPrint.studentName}</strong> بالصف: <strong>{recordToPrint.grade} - {recordToPrint.className}</strong></p>
+                                <p>بأنني قمت بالمخالفة التالية:</p>
+                                <div style={{ border: '2px solid black', padding: '12px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px', margin: '16px 0', background: '#f8fafc' }}>{recordToPrint.violationName}</div>
+                                <p style={{ textAlign: 'justify' }}>وأتعهد بعدم تكرار هذا السلوك مستقبلاً، والالتزام بالأنظمة والتعليمات المدرسية.</p>
+                                <div style={{ marginTop: '60px', display: 'flex', justifyContent: 'space-between', padding: '0 40px' }}>
+                                    <div style={{ textAlign: 'center' }}><p style={{ fontWeight: 'bold', marginBottom: '32px' }}>ولي الأمر</p><p>...............................</p></div>
+                                    <div style={{ textAlign: 'center' }}><p style={{ fontWeight: 'bold', marginBottom: '32px' }}>وكيل شؤون الطلاب</p><p>{currentUser?.name}</p></div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div style={{ textAlign: 'right', fontSize: '16px', lineHeight: '2', padding: '0 16px' }}>
+                                <p>المكرم ولي أمر الطالب.. وفقه الله</p>
+                                <p>نفيدكم بأنه تم رصد ملاحظات انضباطية/سلوكية على ابنكم <strong>({recordToPrint.studentName})</strong>، والمتمثلة في: <strong>{recordToPrint.violationName}</strong>.</p>
+                                <p>نأمل حضوركم للمدرسة يوم ..................... الموافق ..................... لمناقشة وضع الطالب.</p>
+                                <div style={{ marginTop: '60px', display: 'flex', justifyContent: 'space-between', padding: '0 40px' }}>
+                                    <div style={{ textAlign: 'center' }}><p style={{ fontWeight: 'bold', marginBottom: '32px' }}>ولي الأمر</p><p>...............................</p></div>
+                                    <div style={{ textAlign: 'center' }}><p style={{ fontWeight: 'bold', marginBottom: '32px' }}>وكيل شؤون الطلاب</p><p>{currentUser?.name}</p></div>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                )}
             </div>
+
+            {/* ====== PRINT: Daily Violations Table ====== */}
+            <PrintReport
+                id="deputy-daily-violations"
+                title="تقرير المخالفات اليومي"
+                date={new Date().toLocaleDateString('ar-SA')}
+                stats={[
+                    { label: 'مخالفات اليوم', value: records.filter(r => r.date === new Date().toISOString().split('T')[0]).length },
+                ]}
+                columns={[
+                    { key: 'studentName', label: 'اسم الطالب' },
+                    { key: 'grade', label: 'الصف', width: '80px' },
+                    { key: 'className', label: 'الفصل', width: '80px' },
+                    { key: 'violationDegree', label: 'الدرجة', width: '100px' },
+                    { key: 'violationName', label: 'المخالفة' },
+                    { key: 'actionTaken', label: 'الإجراء' },
+                ]}
+                data={records.filter(r => r.date === new Date().toISOString().split('T')[0])}
+                department="وكالة شؤون الطلاب"
+                footerNote={`وكيل شؤون الطلاب: ${currentUser?.name || ''}`}
+            />
+
+            {/* ====== PRINT: Full Violations Log ====== */}
+            <PrintReport
+                id="deputy-full-log"
+                title="السجل الشامل للمخالفات"
+                stats={[
+                    { label: 'إجمالي المخالفات', value: records.length },
+                    { label: 'الطلاب المتكررون', value: new Set(records.map(r => r.studentId)).size },
+                ]}
+                columns={[
+                    { key: 'date', label: 'التاريخ', width: '90px' },
+                    { key: 'studentName', label: 'اسم الطالب' },
+                    { key: 'grade', label: 'الصف', width: '70px' },
+                    { key: 'violationDegree', label: 'الدرجة', width: '90px' },
+                    { key: 'violationName', label: 'المخالفة' },
+                    { key: 'actionTaken', label: 'الإجراء' },
+                    { key: 'notes', label: 'الملاحظات' },
+                ]}
+                data={records}
+                department="وكالة شؤون الطلاب"
+                footerNote={`وكيل شؤون الطلاب: ${currentUser?.name || ''}`}
+            />
 
             <div className="space-y-6 pb-20 animate-fade-in no-print">
                 <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex flex-col md:flex-row justify-between items-center gap-4">
@@ -661,16 +733,110 @@ const StaffDeputy: React.FC = () => {
                         <div><h1 className="text-xl font-bold text-slate-900">وكالة شؤون الطلاب</h1><p className="text-xs text-slate-500">إدارة السلوك والمواظبة</p></div>
                     </div>
                     <div className="flex bg-slate-100 p-1 rounded-xl overflow-x-auto">
-                        {[{ id: 'dashboard', label: 'الرئيسية', icon: LayoutGrid }, { id: 'attendance', label: 'الغياب', icon: Clock }, { id: 'log', label: 'المخالفات', icon: ShieldAlert }, { id: 'positive', label: 'التميز', icon: Star }, { id: 'referrals', label: 'الإحالات', icon: GitCommit }, { id: 'academic_logs', label: 'السجل الأكاديمي', icon: BookOpen }].map(tab => (
-                            <button key={tab.id} onClick={() => setActiveView(tab.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeView === tab.id ? 'bg-white text-red-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
+                        {[
+                            { id: 'dashboard', label: 'الرئيسية', icon: LayoutGrid },
+                            { id: 'exit_approvals', label: `الاستئذانات (${pendingExits.length})`, icon: LogOut },
+                            { id: 'attendance', label: 'الغياب', icon: Clock },
+                            { id: 'log', label: 'المخالفات', icon: ShieldAlert },
+                            { id: 'positive', label: 'التميز', icon: Star },
+                            { id: 'referrals', label: 'الإحالات', icon: GitCommit },
+                            { id: 'academic_logs', label: 'السجل الأكاديمي', icon: BookOpen }
+                        ].map(tab => (
+                            <button key={tab.id} onClick={() => setActiveView(tab.id as any)}
+                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap relative ${activeView === tab.id ? 'bg-white text-red-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                                 <tab.icon size={16} /><span className="hidden md:inline">{tab.label}</span>
+                                {tab.id === 'exit_approvals' && pendingExits.length > 0 && (
+                                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] w-4 h-4 flex items-center justify-center rounded-full">{pendingExits.length}</span>
+                                )}
                             </button>
                         ))}
                     </div>
                 </div>
 
+                {/* ======= EXIT APPROVALS VIEW ======= */}
+                {activeView === 'exit_approvals' && (
+                    <div className="space-y-5 animate-fade-in">
+                        <div className="bg-orange-50 border border-orange-100 rounded-2xl p-5 flex justify-between items-center">
+                            <div>
+                                <h3 className="font-extrabold text-orange-900 text-lg">طلبات الاستئذان - بانتظار اعتمادك</h3>
+                                <p className="text-orange-600 text-sm font-bold mt-0.5">الطلبات المرفوعة من أولياء الأمور عبر البوابة الإلكترونية</p>
+                            </div>
+                            <div className="bg-white rounded-2xl p-3 shadow-sm text-orange-600">
+                                <LogOut size={28} />
+                            </div>
+                        </div>
+
+                        {pendingExits.length === 0 ? (
+                            <div className="bg-white rounded-2xl border border-slate-200 p-16 text-center">
+                                <CheckCircle size={48} className="mx-auto text-emerald-400 mb-4" />
+                                <h3 className="font-bold text-slate-700 text-lg">لا توجد طلبات معلقة</h3>
+                                <p className="text-slate-400 text-sm mt-1">جميع طلبات الاستئذان تمت معالجتها</p>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {pendingExits.map(e => (
+                                    <div key={e.id} className="bg-white rounded-2xl border border-orange-100 shadow-sm p-5 hover:shadow-md transition-all">
+                                        <div className="flex justify-between items-start mb-3">
+                                            <div>
+                                                <h4 className="font-extrabold text-slate-900 text-lg">{e.studentName}</h4>
+                                                <p className="text-xs text-slate-400 font-bold">{e.grade} - {e.className}</p>
+                                            </div>
+                                            <span className="bg-amber-100 text-amber-700 text-[10px] font-bold px-2 py-1 rounded-full animate-pulse">جديد</span>
+                                        </div>
+                                        <div className="bg-slate-50 rounded-xl p-3 mb-4 border border-slate-100 space-y-1.5 text-sm">
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-400">ولي الأمر</span>
+                                                <span className="font-bold text-slate-700">{e.parentName}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-400">سبب الاستئذان</span>
+                                                <span className="font-bold text-slate-700 text-right max-w-[160px] truncate">{e.reason}</span>
+                                            </div>
+                                            <div className="flex justify-between">
+                                                <span className="text-slate-400">وقت الطلب</span>
+                                                <span className="font-bold font-mono text-slate-700">
+                                                    {new Date(e.createdAt).toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' })}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={async () => {
+                                                    if (!window.confirm('تأكيد رفض الطلب؟')) return;
+                                                    const reason = window.prompt('سبب الرفض (اختياري):') || 'غير مبرر';
+                                                    setIsApprovingExit(e.id);
+                                                    await updateExitPermissionStatus(e.id, 'rejected', reason);
+                                                    setPendingExits(prev => prev.filter(x => x.id !== e.id));
+                                                    setIsApprovingExit(null);
+                                                }}
+                                                disabled={isApprovingExit === e.id}
+                                                className="flex-1 border-2 border-red-200 text-red-600 py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-red-50 disabled:opacity-50"
+                                            >
+                                                <X size={16} /> رفض
+                                            </button>
+                                            <button
+                                                onClick={async () => {
+                                                    setIsApprovingExit(e.id);
+                                                    await updateExitPermissionStatus(e.id, 'pending_pickup');
+                                                    setPendingExits(prev => prev.filter(x => x.id !== e.id));
+                                                    setIsApprovingExit(null);
+                                                }}
+                                                disabled={isApprovingExit === e.id}
+                                                className="flex-1 bg-emerald-600 text-white py-2.5 rounded-xl font-bold text-sm flex items-center justify-center gap-2 hover:bg-emerald-700 shadow-lg shadow-emerald-200 disabled:opacity-50"
+                                            >
+                                                {isApprovingExit === e.id ? <Loader2 size={16} className="animate-spin" /> : <CheckCircle size={16} />} اعتماد
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+                )}
+
                 {activeView === 'dashboard' && (
                     <div className="space-y-6 animate-fade-in">
+
                         <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
                             <div className="bg-white p-5 rounded-3xl border border-red-100 shadow-sm text-center">
                                 <p className="text-xs font-bold text-slate-400 uppercase">مخالفات اليوم</p>

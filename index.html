@@ -13,19 +13,31 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
   <meta name="apple-mobile-web-app-title" content="نظام الإدارة الذكي">
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const storedName = localStorage.getItem('school_name');
+    (function () {
+      var storedName = localStorage.getItem('school_name');
+      var storedLogo = localStorage.getItem('school_logo');
       if (storedName) {
         document.title = storedName;
-        const metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
-        if (metaTitle) metaTitle.content = storedName;
+        document.addEventListener("DOMContentLoaded", function () {
+          var metaTitle = document.querySelector('meta[name="apple-mobile-web-app-title"]');
+          if (metaTitle) metaTitle.content = storedName;
+        });
       }
-    });
+      if (storedLogo) {
+        // Update favicon immediately before page renders
+        document.addEventListener("DOMContentLoaded", function () {
+          var favicon = document.getElementById('favicon');
+          var appleTouchIcon = document.getElementById('apple-touch-icon');
+          if (favicon) favicon.href = storedLogo;
+          if (appleTouchIcon) appleTouchIcon.href = storedLogo;
+        });
+      }
+    })();
   </script>
 
-  <!-- Favicon -->
-  <link rel="icon" type="image/png" href="https://www.raed.net/img?id=1471924" />
-  <link rel="apple-touch-icon" href="https://www.raed.net/img?id=1471924">
+  <!-- Favicon (updated dynamically from school logo) -->
+  <link id="favicon" rel="icon" type="image/png" href="https://www.raed.net/img?id=1471924" />
+  <link id="apple-touch-icon" rel="apple-touch-icon" href="https://www.raed.net/img?id=1471924">
 
   <!-- Tailwind CSS -->
   <script src="https://cdn.tailwindcss.com"></script>

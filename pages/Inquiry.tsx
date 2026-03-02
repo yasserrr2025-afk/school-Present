@@ -13,7 +13,7 @@ import {
     getNotifications, markNotificationRead, getStudentPoints, getSchoolNews, generateSmartStudentReport,
     getAvailableSlots, bookAppointment, getMyAppointments, getMyExitPermissions, getStudentsByPhone,
     checkParentRegistration, addExitPermission, getCertificates, getActivities, getActivityApprovals, updateActivityApproval, getStudentWallet, getWalletTransactions,
-    getSchoolFeedback, submitSchoolFeedback, getSchoolPlans, getDailyAcademicLogs
+    getSchoolFeedback, submitSchoolFeedback, getSchoolPlans, getDailyAcademicLogs, getSchoolSettings
 } from '../services/storage';
 import { subscribeToPushNotifications, checkPushPermission } from '../services/pushService';
 import {
@@ -108,8 +108,9 @@ const Inquiry: React.FC = () => {
     const [exitParentPhone, setExitParentPhone] = useState('');
     const [isSubmittingExit, setIsSubmittingExit] = useState(false);
 
-    const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
-    const SCHOOL_LOGO = localStorage.getItem('school_logo') || "https://www.raed.net/img?id=1471924";
+    // School Identity (reactive - fetched from Supabase on mount)
+    const [SCHOOL_NAME, setSCHOOL_NAME] = useState(localStorage.getItem('school_name') || 'المدرسة');
+    const [SCHOOL_LOGO, setSCHOOL_LOGO] = useState(localStorage.getItem('school_logo') || 'https://www.raed.net/img?id=1471924');
 
     // Login Logic Updated
     const handleLogin = async (e: React.FormEvent) => {
@@ -164,6 +165,22 @@ const Inquiry: React.FC = () => {
             setNews(schoolNews);
         } catch (e) { console.error(e); }
     };
+
+    // Fetch school identity from Supabase on mount (ensures correct branding on all devices)
+    useEffect(() => {
+        getSchoolSettings().then(s => {
+            setSCHOOL_NAME(s.schoolName);
+            setSCHOOL_LOGO(s.schoolLogo);
+            // Update browser favicon and title dynamically
+            if (s.schoolLogo) {
+                const fav = document.getElementById('favicon') as HTMLLinkElement | null;
+                const apple = document.getElementById('apple-touch-icon') as HTMLLinkElement | null;
+                if (fav) fav.href = s.schoolLogo;
+                if (apple) apple.href = s.schoolLogo;
+            }
+            if (s.schoolName && s.schoolName !== 'المدرسة') document.title = s.schoolName;
+        }).catch(() => { });
+    }, []);
 
     useEffect(() => { if (isAuthenticated) loadParentDashboard(); }, [isAuthenticated]);
 

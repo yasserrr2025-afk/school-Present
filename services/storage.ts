@@ -1,4 +1,4 @@
-
+﻿
 import { supabase } from '../supabaseClient';
 import {
     Student, ExcuseRequest, StaffUser, AttendanceRecord, BehaviorRecord,
@@ -932,7 +932,23 @@ export const checkInVisitor = async (id: string) => {
 
 // --- Exit Permissions ---
 
-export const addExitPermission = async (perm: any) => {
+const mapExitPerm = (p: any): ExitPermission => ({
+    id: p.id,
+    studentId: p.student_id,
+    studentName: p.student_name,
+    grade: p.grade,
+    className: p.class_name,
+    parentName: p.parent_name,
+    parentPhone: p.parent_phone,
+    reason: p.reason,
+    createdBy: p.created_by,
+    createdByName: p.created_by_name,
+    status: p.status,
+    createdAt: p.created_at,
+    completedAt: p.completed_at,
+});
+
+export const addExitPermission = async (perm: any): Promise<void> => {
     await supabase.from('exit_permissions').insert({
         student_id: perm.studentId,
         student_name: perm.studentName,
@@ -943,41 +959,37 @@ export const addExitPermission = async (perm: any) => {
         reason: perm.reason,
         created_by: perm.createdBy,
         created_by_name: perm.createdByName,
-        status: perm.status || 'pending_pickup' // Allow pending_approval for parents
+        status: perm.status || 'pending_approval',
     });
 };
 
-export const updateExitPermissionStatus = async (id: string, status: string, reply?: string) => {
+export const updateExitPermissionStatus = async (
+    id: string,
+    status: 'pending_approval' | 'pending_pickup' | 'completed' | 'rejected',
+    rejectionReason?: string
+): Promise<void> => {
     const updateData: any = { status };
-    if (reply) {
-        updateData.admin_reply = reply;
-    }
+    if (status === 'completed') updateData.completed_at = new Date().toISOString();
+    if (rejectionReason) updateData.rejection_reason = rejectionReason;
     await supabase.from('exit_permissions').update(updateData).eq('id', id);
 };
 
-export const getExitPermissions = async (date: string): Promise<ExitPermission[]> => {
-    const start = `${date}T00:00:00`;
-    const end = `${date}T23:59:59`;
+export const completeExitPermission = async (id: string): Promise<void> => {
+    await supabase.from('exit_permissions').update({ status: 'completed', completed_at: new Date().toISOString() }).eq('id', id);
+};
 
-    const { data, error } = await supabase.from('exit_permissions').select('*').gte('created_at', start).lte('created_at', end);
+export const getExitPermissionById = async (id: string): Promise<ExitPermission | null> => {
+    const { data, error } = await supabase.from('exit_permissions').select('*').eq('id', id).single();
+    if (error || !data) return null;
+    return mapExitPerm(data);
+};
+
+export const getExitPermissions = async (date?: string): Promise<ExitPermission[]> => {
+    let query = supabase.from('exit_permissions').select('*').order('created_at', { ascending: false });
+    if (date) query = query.gte('created_at', `${date}T00:00:00`).lte('created_at', `${date}T23:59:59`);
+    const { data, error } = await query;
     if (error) return [];
-
-    return data.map((p: any) => ({
-        id: p.id,
-        studentId: p.student_id,
-        studentName: p.student_name,
-        grade: p.grade,
-        className: p.class_name,
-        parentName: p.parent_name,
-        parentPhone: p.parent_phone,
-        reason: p.reason,
-        createdBy: p.created_by,
-        createdByName: p.created_by_name,
-        status: p.status,
-        adminReply: p.admin_reply,
-        createdAt: p.created_at,
-        completedAt: p.completed_at
-    }));
+    return (data || []).map(mapExitPerm);
 };
 
 export const getMyExitPermissions = async (studentIds: string[]): Promise<ExitPermission[]> => {
@@ -1761,3 +1773,4 @@ export const saveSchoolSettings = async (settings: SchoolSettings): Promise<void
     }
 };
 
+// (Exit permissions functions are fully defined above)

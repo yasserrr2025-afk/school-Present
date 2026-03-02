@@ -230,12 +230,13 @@ export interface ExitPermission {
   grade: string;
   className: string;
   parentName: string;
-  parentPhone: string;
+  parentPhone?: string;
   reason?: string;
-  createdBy: string;
-  createdByName?: string; // Authorizer Name
+  createdBy?: string;
+  createdByName?: string;
   status: 'pending_approval' | 'pending_pickup' | 'completed' | 'expired' | 'rejected';
-  adminReply?: string; // Reason for rejection
+  adminReply?: string;
+  rejectionReason?: string;
   createdAt: string;
   completedAt?: string;
 }
@@ -366,3 +367,4 @@ export interface DailyAcademicLog {
   teacherName: string;
   createdAt: string;
 }
+
