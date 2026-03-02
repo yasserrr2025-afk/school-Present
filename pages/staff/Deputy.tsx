@@ -455,7 +455,18 @@ const StaffDeputy: React.FC = () => {
     const handlePrintViolationAction = (record: BehaviorRecord, type: 'commitment' | 'summons') => {
         setRecordToPrint(record);
         setPrintMode(type);
-        setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
+        // Show the hidden print div, print, then hide it
+        setTimeout(() => {
+            const el = document.getElementById('print-letters');
+            if (el) { el.style.display = 'block'; el.classList.remove('hidden'); }
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => {
+                    if (el) { el.style.display = ''; el.classList.add('hidden'); }
+                    setPrintMode('none');
+                }, 600);
+            }, 300);
+        }, 50);
     };
 
     const handlePrintReferral = (referral: Referral) => {
@@ -475,8 +486,10 @@ const StaffDeputy: React.FC = () => {
 
         if (type === 'referral_print') {
             setPrintMode('absence_referral');
+            setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
         } else if (type === 'absence_notice') {
             setPrintMode('absence_notice');
+            setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
         } else {
             setRecordToPrint({
                 id: 'temp',
@@ -491,9 +504,21 @@ const StaffDeputy: React.FC = () => {
                 articleNumber: ''
             });
             setPrintMode(type === 'pledge' ? 'commitment' : 'summons');
+            // Show print-letters div before printing
+            setTimeout(() => {
+                const el = document.getElementById('print-letters');
+                if (el) { el.style.display = 'block'; el.classList.remove('hidden'); }
+                setTimeout(() => {
+                    window.print();
+                    setTimeout(() => {
+                        if (el) { el.style.display = ''; el.classList.add('hidden'); }
+                        setPrintMode('none');
+                    }, 600);
+                }, 300);
+            }, 50);
         }
-        setTimeout(() => { window.print(); setPrintMode('none'); }, 300);
     };
+
 
     const handleCreateReferralFromRecord = async (record: BehaviorRecord) => {
         if (!window.confirm(`هل أنت متأكد من إحالة الطالب ${record.studentName} للموجه الطلابي؟`)) return;
@@ -627,55 +652,101 @@ const StaffDeputy: React.FC = () => {
     return (
         <>
             {/* ====== PRINT: Formal Letters (Commitment / Summons) ====== */}
-            <div id="print-letters" className="hidden" dir="rtl" style={{ fontFamily: 'Arial, sans-serif' }}>
+            <div id="print-letters" className="hidden" dir="rtl" style={{ fontFamily: 'Arial, sans-serif', fontSize: '14px' }}>
                 <style>{`
                     @media print {
                         body * { visibility: hidden; }
                         #print-letters, #print-letters * { visibility: visible; }
-                        #print-letters { position: fixed; left: 0; top: 0; width: 100%; padding: 24px; background: white; z-index: 99999; display: block !important; }
+                        #print-letters { position: fixed; left: 0; top: 0; width: 100%; padding: 28px; background: white; z-index: 99999; display: block !important; }
                         .no-print { display: none !important; }
                     }
                 `}</style>
                 {(printMode === 'commitment' || printMode === 'summons') && recordToPrint && (
                     <div>
-                        {/* Official Header */}
-                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '4px solid #1e293b', paddingBottom: '12px', marginBottom: '20px' }}>
-                            <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 'bold', lineHeight: '1.8' }}>
+                        {/* ===== Official Header ===== */}
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '4px solid #1e293b', paddingBottom: '14px', marginBottom: '24px' }}>
+                            {/* Right */}
+                            <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 'bold', lineHeight: '2.2' }}>
                                 <div>المملكة العربية السعودية</div>
                                 <div>وزارة التعليم</div>
-                                <div style={{ fontSize: '15px' }}>{SCHOOL_NAME}</div>
+                                <div style={{ fontSize: '15px', borderBottom: '1px solid #ccc', paddingBottom: '2px' }}>{SCHOOL_NAME}</div>
+                                <div style={{ fontSize: '12px', color: '#555' }}>وكالة شؤون الطلاب</div>
+                                {localStorage.getItem('school_logo') && (
+                                    <img src={localStorage.getItem('school_logo')!} alt="School Logo" style={{ height: '40px', marginTop: '4px', objectFit: 'contain' }} />
+                                )}
                             </div>
-                            <div style={{ textAlign: 'center' }}>
-                                <img src={localStorage.getItem('school_logo') || 'https://www.raed.net/img?id=1471924'} alt="Logo" style={{ height: '80px', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
-                                <div style={{ fontWeight: '900', fontSize: '17px', marginTop: '8px' }}>
+                            {/* Center: Ministry Logo */}
+                            <div style={{ textAlign: 'center', flex: 1 }}>
+                                <img src="https://www.raed.net/img?id=1519976" alt="وزارة التعليم" style={{ height: '95px', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
+                                <div style={{ fontWeight: '900', fontSize: '19px', marginTop: '10px', borderBottom: '2px solid #1e293b', display: 'inline-block', padding: '0 16px 4px' }}>
                                     {printMode === 'commitment' ? 'تعهد خطي (انضباطي)' : 'خطاب استدعاء ولي أمر'}
                                 </div>
                             </div>
-                            <div style={{ textAlign: 'left', fontSize: '12px', fontWeight: 'bold', lineHeight: '1.8' }}>
-                                <div>وكالة شؤون الطلاب</div>
-                                <div>{new Date().toLocaleDateString('ar-SA')}</div>
+                            {/* Left */}
+                            <div style={{ textAlign: 'left', fontSize: '12px', fontWeight: 'bold', lineHeight: '2.2' }}>
+                                <div>Kingdom of Saudi Arabia</div>
+                                <div>Ministry of Education</div>
+                                <div style={{ marginTop: '4px', border: '1px solid #333', padding: '2px 10px', display: 'inline-block', fontSize: '13px' }}>
+                                    {new Date().toLocaleDateString('ar-SA')}
+                                </div>
+                                <div style={{ marginTop: '4px', fontSize: '12px', color: '#555' }}>رقم: ....... / .......</div>
                             </div>
                         </div>
 
                         {printMode === 'commitment' ? (
-                            <div style={{ textAlign: 'right', fontSize: '16px', lineHeight: '2', padding: '0 16px' }}>
-                                <p>أقر أنا الطالب/ة: <strong>{recordToPrint.studentName}</strong> بالصف: <strong>{recordToPrint.grade} - {recordToPrint.className}</strong></p>
-                                <p>بأنني قمت بالمخالفة التالية:</p>
-                                <div style={{ border: '2px solid black', padding: '12px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px', margin: '16px 0', background: '#f8fafc' }}>{recordToPrint.violationName}</div>
-                                <p style={{ textAlign: 'justify' }}>وأتعهد بعدم تكرار هذا السلوك مستقبلاً، والالتزام بالأنظمة والتعليمات المدرسية.</p>
-                                <div style={{ marginTop: '60px', display: 'flex', justifyContent: 'space-between', padding: '0 40px' }}>
-                                    <div style={{ textAlign: 'center' }}><p style={{ fontWeight: 'bold', marginBottom: '32px' }}>ولي الأمر</p><p>...............................</p></div>
-                                    <div style={{ textAlign: 'center' }}><p style={{ fontWeight: 'bold', marginBottom: '32px' }}>وكيل شؤون الطلاب</p><p>{currentUser?.name}</p></div>
+                            <div style={{ textAlign: 'right', fontSize: '16px', lineHeight: '2.2', padding: '0 20px' }}>
+                                <p style={{ marginBottom: '8px' }}>
+                                    أقر أنا الطالب: <strong style={{ borderBottom: '1px solid black', padding: '0 8px' }}>{recordToPrint.studentName}</strong>
+                                    &nbsp; بالصف: <strong style={{ borderBottom: '1px solid black', padding: '0 8px' }}>{recordToPrint.grade} - {recordToPrint.className}</strong>
+                                </p>
+                                <p style={{ marginBottom: '8px' }}>بأنني قمت بالمخالفة الانضباطية التالية:</p>
+                                <div style={{ border: '2px solid #1e293b', padding: '14px 20px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px', margin: '16px 0', background: '#f8fafc', borderRadius: '4px' }}>
+                                    {recordToPrint.violationName}
+                                </div>
+                                <p style={{ textAlign: 'justify', marginBottom: '8px' }}>
+                                    وأتعهد أمام الله ثم أمام إدارة المدرسة بعدم تكرار هذا السلوك مستقبلاً، والالتزام التام بالأنظمة والتعليمات والقيم المدرسية، وإن خالفت ذلك أكون قد أعطيت الإدارة الصلاحية باتخاذ الإجراء النظامي اللازم.
+                                </p>
+                                {recordToPrint.notes && <p style={{ background: '#fef9c3', padding: '8px 12px', borderRight: '4px solid #f59e0b', marginTop: '8px' }}>ملاحظات: {recordToPrint.notes}</p>}
+                                <div style={{ marginTop: '70px', display: 'flex', justifyContent: 'space-around', padding: '0 20px' }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontWeight: 'bold', marginBottom: '40px' }}>توقيع الطالب</p>
+                                        <p style={{ borderTop: '1px solid black', paddingTop: '4px', minWidth: '150px' }}>&nbsp;</p>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontWeight: 'bold', marginBottom: '40px' }}>توقيع ولي الأمر</p>
+                                        <p style={{ borderTop: '1px solid black', paddingTop: '4px', minWidth: '150px' }}>&nbsp;</p>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>وكيل شؤون الطلاب</p>
+                                        <p style={{ fontWeight: 'bold', color: '#1e3a8a', marginBottom: '20px' }}>{currentUser?.name}</p>
+                                        <p style={{ borderTop: '1px solid black', paddingTop: '4px', minWidth: '150px' }}>&nbsp;</p>
+                                    </div>
                                 </div>
                             </div>
                         ) : (
-                            <div style={{ textAlign: 'right', fontSize: '16px', lineHeight: '2', padding: '0 16px' }}>
-                                <p>المكرم ولي أمر الطالب.. وفقه الله</p>
-                                <p>نفيدكم بأنه تم رصد ملاحظات انضباطية/سلوكية على ابنكم <strong>({recordToPrint.studentName})</strong>، والمتمثلة في: <strong>{recordToPrint.violationName}</strong>.</p>
-                                <p>نأمل حضوركم للمدرسة يوم ..................... الموافق ..................... لمناقشة وضع الطالب.</p>
-                                <div style={{ marginTop: '60px', display: 'flex', justifyContent: 'space-between', padding: '0 40px' }}>
-                                    <div style={{ textAlign: 'center' }}><p style={{ fontWeight: 'bold', marginBottom: '32px' }}>ولي الأمر</p><p>...............................</p></div>
-                                    <div style={{ textAlign: 'center' }}><p style={{ fontWeight: 'bold', marginBottom: '32px' }}>وكيل شؤون الطلاب</p><p>{currentUser?.name}</p></div>
+                            <div style={{ textAlign: 'right', fontSize: '16px', lineHeight: '2.2', padding: '0 20px' }}>
+                                <p style={{ marginBottom: '12px' }}>المكرم / ولي أمر الطالب: <strong style={{ borderBottom: '1px solid black', padding: '0 8px' }}>{recordToPrint.studentName}</strong>&nbsp; وفقه الله</p>
+                                <p style={{ marginBottom: '8px' }}>السلام عليكم ورحمة الله وبركاته، وبعد:</p>
+                                <p style={{ textAlign: 'justify', marginBottom: '8px' }}>
+                                    نفيدكم بأنه تم رصد ملاحظات انضباطية/سلوكية على ابنكم الطالب <strong>({recordToPrint.studentName})</strong> بالصف <strong>{recordToPrint.grade} - {recordToPrint.className}</strong>، والمتمثلة في:
+                                </p>
+                                <div style={{ border: '2px solid #1e293b', padding: '14px 20px', textAlign: 'center', fontWeight: 'bold', fontSize: '18px', margin: '16px 0', background: '#f8fafc', borderRadius: '4px' }}>
+                                    {recordToPrint.violationName}
+                                </div>
+                                <p style={{ textAlign: 'justify' }}>
+                                    لذا نأمل حضوركم الكريم إلى المدرسة يوم <span style={{ borderBottom: '1px solid black', padding: '0 20px' }}>&nbsp;</span> الموافق <span style={{ borderBottom: '1px solid black', padding: '0 20px' }}>&nbsp;</span> لمناقشة وضع الطالب واتخاذ ما يلزم، آملين تعاونكم معنا في تعديل سلوكه وتقويمه.
+                                </p>
+                                {recordToPrint.notes && <p style={{ background: '#fef9c3', padding: '8px 12px', borderRight: '4px solid #f59e0b', marginTop: '8px' }}>ملاحظات: {recordToPrint.notes}</p>}
+                                <div style={{ marginTop: '70px', display: 'flex', justifyContent: 'space-around', padding: '0 20px' }}>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontWeight: 'bold', marginBottom: '40px' }}>توقيع ولي الأمر</p>
+                                        <p style={{ borderTop: '1px solid black', paddingTop: '4px', minWidth: '150px' }}>&nbsp;</p>
+                                    </div>
+                                    <div style={{ textAlign: 'center' }}>
+                                        <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>وكيل شؤون الطلاب</p>
+                                        <p style={{ fontWeight: 'bold', color: '#1e3a8a', marginBottom: '20px' }}>{currentUser?.name}</p>
+                                        <p style={{ borderTop: '1px solid black', paddingTop: '4px', minWidth: '150px' }}>&nbsp;</p>
+                                    </div>
                                 </div>
                             </div>
                         )}

@@ -30,8 +30,9 @@ interface PrintReportProps {
     department?: string;
 }
 
+const MINISTRY_LOGO = 'https://www.raed.net/img?id=1519976';
 const SCHOOL_NAME = () => localStorage.getItem('school_name') || 'المدرسة';
-const SCHOOL_LOGO = () => localStorage.getItem('school_logo') || 'https://www.raed.net/img?id=1471924';
+const SCHOOL_LOGO = () => localStorage.getItem('school_logo') || '';
 
 export const PrintReport: React.FC<PrintReportProps> = ({
     id = 'print-report',
@@ -71,29 +72,35 @@ export const PrintReport: React.FC<PrintReportProps> = ({
                 borderBottom: '4px solid #1e293b', paddingBottom: '12px', marginBottom: '16px'
             }}>
                 {/* Right: School Info */}
-                <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 'bold', lineHeight: '1.8' }}>
+                <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 'bold', lineHeight: '2' }}>
                     <div>المملكة العربية السعودية</div>
                     <div>وزارة التعليم</div>
-                    <div style={{ fontSize: '15px' }}>{schoolName}</div>
-                    <div style={{ fontSize: '12px', color: '#475569' }}>{department}</div>
+                    <div style={{ fontSize: '15px', borderBottom: '1px solid #ccc', paddingBottom: '4px' }}>{schoolName}</div>
+                    <div style={{ fontSize: '12px', color: '#475569', marginTop: '2px' }}>{department}</div>
+                    {schoolLogo && <img src={schoolLogo} alt="School Logo" style={{ height: '40px', marginTop: '6px', objectFit: 'contain' }} />}
                 </div>
 
-                {/* Center: Logo + Title */}
-                <div style={{ textAlign: 'center' }}>
-                    <img src={schoolLogo} alt="Logo" style={{ height: '80px', width: 'auto', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
-                    <div style={{ fontWeight: '900', fontSize: '17px', marginTop: '8px' }}>{title}</div>
-                    {subTitle && <div style={{ fontSize: '12px', color: '#475569', marginTop: '2px' }}>{subTitle}</div>}
+                {/* Center: Ministry Logo + Title */}
+                <div style={{ textAlign: 'center', flex: 1 }}>
+                    <img src={MINISTRY_LOGO} alt="وزارة التعليم" style={{ height: '90px', width: 'auto', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
+                    <div style={{ fontWeight: '900', fontSize: '18px', marginTop: '8px', borderBottom: '2px solid #1e293b', paddingBottom: '4px', display: 'inline-block', minWidth: '220px' }}>{title}</div>
+                    {subTitle && <div style={{ fontSize: '12px', color: '#475569', marginTop: '4px' }}>{subTitle}</div>}
                 </div>
 
                 {/* Left: Date + Stats */}
-                <div style={{ textAlign: 'left', fontSize: '12px', fontWeight: 'bold', lineHeight: '1.8' }}>
-                    <div>التاريخ: {reportDate}</div>
-                    <div>الإجمالي: {data.length}</div>
+                <div style={{ textAlign: 'left', fontSize: '12px', fontWeight: 'bold', lineHeight: '2' }}>
+                    <div>Kingdom of Saudi Arabia</div>
+                    <div>Ministry of Education</div>
+                    <div style={{ fontSize: '13px', marginTop: '4px', border: '1px solid #333', padding: '2px 8px', display: 'inline-block' }}>
+                        {reportDate}
+                    </div>
+                    <div style={{ marginTop: '4px' }}>الإجمالي: {data.length}</div>
                     {stats.map((s, i) => (
                         <div key={i}>{s.label}: {s.value}</div>
                     ))}
                 </div>
             </div>
+
 
             {/* ====== TABLE ====== */}
             {data.length === 0 ? (
