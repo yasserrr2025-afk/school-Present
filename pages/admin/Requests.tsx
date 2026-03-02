@@ -78,7 +78,7 @@ const Requests: React.FC = () => {
                     const studentData = allStudents.find(s => s.studentId === reqData.studentId || s.id === reqData.studentId);
                     if (studentData && studentData.phone) {
                         const statusAr = newStatus === RequestStatus.APPROVED ? 'معتمد ✅' : 'مرفوض ❌';
-                        const message = aiReply ? aiReply : `مرحباً بك أخي ولي أمر الطالب: ${reqData.studentName}\nتم تحديث حالة طلب العذر ليوم ${reqData.date} إلى: *${statusAr}*\n\nمدرسة عماد الدين زنكي المتوسطة.`;
+                        const message = aiReply ? aiReply : `مرحباً بك أخي ولي أمر الطالب: ${reqData.studentName}\nتم تحديث حالة طلب العذر ليوم ${reqData.date} إلى: *${statusAr}*\n\nالمدرسة.`;
 
                         await sendWhatsAppMessage(studentData.phone, message);
                     }

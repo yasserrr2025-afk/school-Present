@@ -67,7 +67,7 @@ const OfficialHeader = ({ schoolName, subTitle }: { schoolName: string, subTitle
 
 const StaffDeputy: React.FC = () => {
     const [currentUser, setCurrentUser] = useState<StaffUser | null>(null);
-    const SCHOOL_NAME = localStorage.getItem('school_name') || "مدرسة عماد الدين زنكي المتوسطة";
+    const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
 
     // Navigation View State
     const [activeView, setActiveView] = useState<'dashboard' | 'attendance' | 'referrals' | 'log' | 'positive' | 'academic_logs'>('dashboard');

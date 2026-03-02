@@ -54,7 +54,7 @@ const Certificates: React.FC = () => {
         if (!printWindow) return alert('اسمح بالنوافذ المنبثقة');
 
         const managerName = localStorage.getItem('school_manager_name') || 'مدير المدرسة';
-        const schoolName = localStorage.getItem('school_name') || 'مدرسة عماد الدين زنكي المتوسطة';
+        const schoolName = localStorage.getItem('school_name') || 'المدرسة';
 
         const title = cert.type === 'attendance' ? 'شهادة شكر وانتظام' : 'شهادة تفوق وتميز';
         const compliment = cert.type === 'attendance' ? 'على انضباطه وعدم غيابه طوال شهر' : 'على تفوقه العلمي والعملي خلال شهر';

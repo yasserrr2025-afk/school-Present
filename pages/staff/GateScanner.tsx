@@ -50,7 +50,7 @@ const GateScanner: React.FC = () => {
 
     // Constants
     const REPORT_LOGO = "https://www.raed.net/img?id=1475049";
-    const SCHOOL_NAME = localStorage.getItem('school_name') || "متوسطة عماد الدين زنكي";
+    const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
 
     // --- Statistics ---
     const stats = useMemo(() => {

@@ -28,6 +28,7 @@ import HealthAdvisor from './pages/staff/HealthAdvisor'; // Import New Page
 import ActivityCoordinator from './pages/staff/ActivityCoordinator';
 import CanteenManager from './pages/staff/CanteenManager';
 import Teacher from './pages/staff/Teacher';
+import TeacherDash from './pages/staff/TeacherDash';
 import { StaffUser } from './types';
 
 const { HashRouter, Routes, Route, Navigate, useLocation } = ReactRouterDOM as any;
@@ -128,6 +129,7 @@ const AppContent = () => {
         <Route path="/staff/activities" element={<ProtectedStaffRoute requiredPermission="activities"><ActivityCoordinator /></ProtectedStaffRoute>} />
         <Route path="/staff/canteen" element={<ProtectedStaffRoute requiredPermission="canteen"><CanteenManager /></ProtectedStaffRoute>} />
         <Route path="/staff/teacher" element={<ProtectedStaffRoute requiredPermission="teacher"><Teacher /></ProtectedStaffRoute>} />
+        <Route path="/staff/teacher-dash" element={<ProtectedStaffRoute requiredPermission="teacher"><TeacherDash /></ProtectedStaffRoute>} />
 
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

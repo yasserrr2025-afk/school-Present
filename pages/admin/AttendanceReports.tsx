@@ -18,7 +18,7 @@ const AttendanceReports: React.FC = () => {
   const [analyzing, setAnalyzing] = useState(false);
 
   // School Info
-  const SCHOOL_NAME = localStorage.getItem('school_name') || "مدرسة عماد الدين زنكي المتوسطة";
+  const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
   const SCHOOL_LOGO = "https://www.raed.net/img?id=1471924";
 
   useEffect(() => {

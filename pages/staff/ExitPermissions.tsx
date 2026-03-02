@@ -13,7 +13,7 @@ const ExitPermissions: React.FC = () => {
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
 
   // School Name for Print
-  const SCHOOL_NAME = localStorage.getItem('school_name') || "متوسطة عماد الدين زنكي";
+  const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
 
   // Form State
   const [showModal, setShowModal] = useState(false);

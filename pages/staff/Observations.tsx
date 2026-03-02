@@ -34,7 +34,7 @@ const StaffObservations: React.FC = () => {
   const [observations, setObservations] = useState<StudentObservation[]>([]);
   const [loading, setLoading] = useState(true);
   const [reportDate, setReportDate] = useState(new Date().toISOString().split('T')[0]);
-  const SCHOOL_NAME = localStorage.getItem('school_name') || "متوسطة عماد الدين زنكي";
+  const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
 
   // Form State
   const [showModal, setShowModal] = useState(false);

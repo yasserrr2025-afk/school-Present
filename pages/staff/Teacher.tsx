@@ -7,6 +7,7 @@ import {
     getStudentsSync, getStudents, addDailyAcademicLog, getDailyAcademicLogs, createNotification
 } from '../../services/storage';
 import { DailyAcademicLog, StaffUser, Student } from '../../types';
+import { GRADES, CLASSES } from '../../constants';
 
 const { useNavigate } = ReactRouterDOM as any;
 
@@ -44,16 +45,8 @@ const Teacher: React.FC = () => {
         initData();
     }, [navigate]);
 
-    const assignments = user?.assignments || [];
-
-    const availableGrades = useMemo(() => {
-        return Array.from(new Set(assignments.map(a => a.grade)));
-    }, [assignments]);
-
-    const availableClasses = useMemo(() => {
-        if (!selectedGrade) return [];
-        return assignments.filter(a => a.grade === selectedGrade).map(a => a.className);
-    }, [assignments, selectedGrade]);
+    const availableGrades = GRADES;
+    const availableClasses = CLASSES;
 
     // Automatically select options if there's only one
     useEffect(() => {
@@ -169,6 +162,16 @@ const Teacher: React.FC = () => {
             </header>
 
             <main className="max-w-6xl mx-auto px-4 py-8 space-y-6">
+
+                {/* Switch to Reports Mode */}
+                <div className="flex justify-end">
+                    <button
+                        onClick={() => navigate('/staff/teacher-dash')}
+                        className="bg-purple-50 text-purple-700 hover:bg-purple-100 hover:text-purple-800 border border-purple-200 px-5 py-2.5 rounded-xl font-bold flex items-center gap-2 transition-colors shadow-sm"
+                    >
+                        <Activity size={18} /> العرض والتقارير الاحترافية المجمعة
+                    </button>
+                </div>
 
                 {/* Greeting */}
                 <div className="bg-gradient-to-r from-blue-600 to-indigo-700 p-8 rounded-[2rem] text-white flex items-center gap-6 shadow-xl relative overflow-hidden">

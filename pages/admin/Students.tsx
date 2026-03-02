@@ -168,9 +168,24 @@ const Students: React.FC = () => {
   // --- Excel Logic ---
   const mapCodeToGrade = (code: string | number): string => {
     const c = code ? code.toString().trim() : '';
-    if (c === '725' || c === '0725' || c.includes('أول')) return 'الأول متوسط';
-    if (c === '825' || c === '0825' || c.includes('ثاني')) return 'الثاني متوسط';
-    if (c === '925' || c === '0925' || c.includes('ثالث')) return 'الثالث متوسط';
+    // Number Mappings (Specific)
+    if (c === '725' || c === '0725') return 'الأول متوسط';
+    if (c === '825' || c === '0825') return 'الثاني متوسط';
+    if (c === '925' || c === '0925') return 'الثالث متوسط';
+    if (c === '1314' || c === '01314') return 'الأول ثانوي';
+    if (c === '1416' || c === '01416') return 'الثاني ثانوي';
+    if (c === '1516' || c === '01516') return 'الثالث ثانوي';
+
+    // String Mappings (Fallback)
+    if (c.includes('أول ثانوي') || c.includes('الأول ثانوي')) return 'الأول ثانوي';
+    if (c.includes('ثاني ثانوي') || c.includes('الثاني ثانوي')) return 'الثاني ثانوي';
+    if (c.includes('ثالث ثانوي') || c.includes('الثالث ثانوي')) return 'الثالث ثانوي';
+
+    if (c.includes('أول')) return 'الأول متوسط';
+    if (c.includes('ثاني')) return 'الثاني متوسط';
+    if (c.includes('ثالث')) return 'الثالث متوسط';
+
+    // Generic
     if (GRADES.includes(c)) return c;
     return c || GRADES[0];
   };

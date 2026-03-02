@@ -59,7 +59,7 @@ const Dashboard: React.FC = () => {
     const [dataLoading, setDataLoading] = useState(true);
 
     // School Identity
-    const [schoolName, setSchoolName] = useState(localStorage.getItem('school_name') || 'مدرسة عماد الدين زنكي المتوسطة');
+    const [schoolName, setSchoolName] = useState(localStorage.getItem('school_name') || 'المدرسة');
     const [schoolLogo, setSchoolLogo] = useState(localStorage.getItem('school_logo') || 'https://www.raed.net/img?id=1471924');
 
     // Alerts & AI
@@ -70,6 +70,7 @@ const Dashboard: React.FC = () => {
     // Settings & Bot Context
     const [tempSchoolName, setTempSchoolName] = useState(schoolName);
     const [tempSchoolLogo, setTempSchoolLogo] = useState(schoolLogo);
+    const [tempManagerName, setTempManagerName] = useState(localStorage.getItem('school_manager_name') || '');
 
     // WhatsApp Settings State
     const [whatsAppEnabled, setWhatsAppEnabled] = useState(localStorage.getItem('whatsapp_integration') === 'true');
@@ -190,6 +191,7 @@ const Dashboard: React.FC = () => {
     const handleSaveSettings = () => {
         localStorage.setItem('school_name', tempSchoolName);
         localStorage.setItem('school_logo', tempSchoolLogo);
+        localStorage.setItem('school_manager_name', tempManagerName);
         localStorage.setItem('whatsapp_integration', whatsAppEnabled ? 'true' : 'false');
         setSchoolName(tempSchoolName);
         setSchoolLogo(tempSchoolLogo);
@@ -1547,6 +1549,10 @@ const Dashboard: React.FC = () => {
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">اسم المؤسسة التعليمية</label>
                                     <input value={tempSchoolName} onChange={e => setTempSchoolName(e.target.value)} className="w-full p-4 bg-slate-50 border border-slate-200/60 rounded-2xl font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 transition-all focus:bg-white" />
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">اسم مدير المدرسة</label>
+                                    <input value={tempManagerName} onChange={e => setTempManagerName(e.target.value)} placeholder="مثال: أ. محمد عبدالله" className="w-full p-4 bg-slate-50 border border-slate-200/60 rounded-2xl font-bold text-slate-800 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-400 transition-all focus:bg-white" />
                                 </div>
                                 <div>
                                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider block mb-2">رابط هوية / شعار المدرسة (URL)</label>

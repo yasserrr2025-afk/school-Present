@@ -38,7 +38,7 @@ const Submission: React.FC = () => {
     // Data
     const [students, setStudents] = useState<Student[]>([]);
 
-    const SCHOOL_NAME = localStorage.getItem('school_name') || "مدرسة عماد الدين زنكي المتوسطة";
+    const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
 
     useEffect(() => {
         const fetchData = async () => {

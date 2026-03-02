@@ -103,7 +103,7 @@ const Inquiry: React.FC = () => {
     const [exitParentPhone, setExitParentPhone] = useState('');
     const [isSubmittingExit, setIsSubmittingExit] = useState(false);
 
-    const SCHOOL_NAME = localStorage.getItem('school_name') || "مدرسة عماد الدين زنكي المتوسطة";
+    const SCHOOL_NAME = localStorage.getItem('school_name') || "المدرسة";
     const SCHOOL_LOGO = localStorage.getItem('school_logo') || "https://www.raed.net/img?id=1471924";
 
     // Login Logic Updated
