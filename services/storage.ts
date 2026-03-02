@@ -93,6 +93,17 @@ export const deleteStudent = async (id: string): Promise<void> => {
     invalidateCache();
 };
 
+export const bulkDeleteStudents = async (ids: string[]): Promise<void> => {
+    if (ids.length === 0) return;
+    const deleteChunkSize = 500;
+    for (let i = 0; i < ids.length; i += deleteChunkSize) {
+        const chunk = ids.slice(i, i + deleteChunkSize);
+        const { error } = await supabase.from('students').delete().in('id', chunk);
+        if (error) throw new Error(error.message);
+    }
+    invalidateCache();
+};
+
 export const syncStudentsBatch = async (toUpsert: Student[], toDeleteIds: string[], toDeleteDbIds: string[] = []) => {
     if (toDeleteDbIds.length > 0) {
         const deleteChunkSize = 500;

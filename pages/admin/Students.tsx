@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Search, UserCheck, School, X, CheckSquare, Square, Loader2, RefreshCw, Edit, Save, Smartphone, Hash, GraduationCap, Filter } from 'lucide-react';
-import { getStudents, syncStudentsBatch, getStudentsSync, addStudent, deleteStudent, updateStudent, getAvailableClassesForGrade } from '../../services/storage';
+import { getStudents, syncStudentsBatch, getStudentsSync, addStudent, deleteStudent, bulkDeleteStudents, updateStudent, getAvailableClassesForGrade } from '../../services/storage';
 import { Student } from '../../types';
 import { GRADES, CLASSES } from '../../constants';
 
@@ -95,9 +95,7 @@ const Students: React.FC = () => {
     if (!window.confirm(`هل أنت متأكد من حذف ${selectedIds.length} طالب؟`)) return;
     setIsBulkDeleting(true);
     try {
-      for (const id of selectedIds) {
-        await deleteStudent(id);
-      }
+      await bulkDeleteStudents(selectedIds);
       setSelectedIds([]);
       await fetchStudents(true);
       alert("تم الحذف بنجاح.");
