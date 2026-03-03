@@ -55,8 +55,9 @@ export const PrintReport: React.FC<PrintReportProps> = ({
             <style>{`
                 @media print {
                     body * { visibility: hidden; }
-                    #${id}, #${id} * { visibility: visible; }
-                    #${id} { position: fixed; left: 0; top: 0; width: 100%; padding: 16px; background: white; z-index: 99999; display: block !important; }
+                    #${id}:not(.hidden), #${id}:not(.hidden) * { visibility: visible; }
+                    #${id}:not(.hidden) { position: absolute; left: 0; top: 0; width: 100%; padding: 16px; background: white; z-index: 99999; }
+                    .hidden { display: none !important; }
                     .no-print { display: none !important; }
                 }
                 #${id} table { border-collapse: collapse; width: 100%; }

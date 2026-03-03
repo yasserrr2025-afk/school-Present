@@ -723,6 +723,7 @@ const Inquiry: React.FC = () => {
                                 { id: 'visits', label: 'المواعيد', icon: CalendarCheck },
                                 { id: 'behavior', label: 'المخالفات', icon: ShieldAlert },
                                 { id: 'observations', label: 'الملاحظات', icon: MessageSquare },
+                                { id: 'academic', label: 'السجل الأكاديمي', icon: FileText },
                                 { id: 'activities', label: 'الموافقات', icon: CalendarCheck },
                                 { id: 'certificates', label: 'الشهادات', icon: Award },
                                 { id: 'wallet', label: 'المقصف', icon: CreditCard },
@@ -1458,6 +1459,48 @@ const Inquiry: React.FC = () => {
                                                     </div>
                                                 )}
                                             </div>
+                                        </div>
+                                    )}
+
+                                    {activeTab === 'academic' && (
+                                        <div className="space-y-4 animate-fade-in">
+                                            {academicLogs.length === 0 ? <p className="text-center py-10 text-slate-400 text-sm">لا توجد ملاحظات أكاديمية مسجلة حالياً.</p> : academicLogs.map((log: any) => (
+                                                <div key={log.id} className="bg-white p-5 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                                                    <div className="flex justify-between items-start mb-4">
+                                                        <div>
+                                                            <h4 className="font-bold text-slate-900 text-base">{log.subject}</h4>
+                                                            <p className="text-xs text-slate-500 font-medium flex items-center gap-1 mt-1"><User size={12} /> المعلم/ة: {log.teacherName}</p>
+                                                        </div>
+                                                        <span className="text-xs text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-100 font-mono">{log.date}</span>
+                                                    </div>
+
+                                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                                                        <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col items-center justify-center text-center">
+                                                            <p className="text-[11px] text-slate-500 mb-1 font-bold">المشاركة</p>
+                                                            <p className="font-extrabold text-sm text-slate-800">{log.participation || '—'}</p>
+                                                        </div>
+                                                        <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col items-center justify-center text-center">
+                                                            <p className="text-[11px] text-slate-500 mb-1 font-bold">الواجبات</p>
+                                                            <p className="font-extrabold text-sm text-slate-800">{log.homework || '—'}</p>
+                                                        </div>
+                                                        <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col items-center justify-center text-center">
+                                                            <p className="text-[11px] text-slate-500 mb-1 font-bold">المشروع</p>
+                                                            <p className="font-extrabold text-sm text-slate-800">{log.projectStatus || '—'}</p>
+                                                        </div>
+                                                        <div className="bg-slate-50 border border-slate-100 p-3 rounded-2xl flex flex-col items-center justify-center text-center">
+                                                            <p className="text-[11px] text-slate-500 mb-1 font-bold">البحث</p>
+                                                            <p className="font-extrabold text-sm text-slate-800">{log.researchStatus || '—'}</p>
+                                                        </div>
+                                                    </div>
+
+                                                    {log.notes && (
+                                                        <div className="bg-blue-50/50 p-4 rounded-2xl border border-blue-50">
+                                                            <p className="text-xs font-bold text-blue-800 mb-1.5 flex items-center gap-1.5"><MessageSquare size={14} /> ملاحظة المعلم:</p>
+                                                            <p className="text-sm text-blue-900 leading-relaxed font-medium">{log.notes}</p>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            ))}
                                         </div>
                                     )}
                                 </>

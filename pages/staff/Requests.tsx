@@ -15,6 +15,7 @@ const StaffRequests: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedReq, setSelectedReq] = useState<ExcuseRequest | null>(null);
   const [filter, setFilter] = useState<RequestStatus | 'ALL'>('ALL');
+  const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
   // History State
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -184,27 +185,28 @@ const StaffRequests: React.FC = () => {
           {filteredRequests.map(req => (
             <div key={req.id} className="group bg-white rounded-2xl border border-slate-200 shadow-sm hover:shadow-lg transition-all duration-300 flex flex-col overflow-hidden hover:-translate-y-1">
               {/* Card Header */}
-              <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex justify-between items-start">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-full bg-white border border-slate-200 text-blue-700 flex items-center justify-center font-bold text-sm shadow-sm">
-                    {req.studentName.charAt(0)}
+              <div className="p-4 border-b border-slate-50 bg-slate-50/50 flex flex-col gap-3">
+                <div className="flex flex-col gap-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white border border-slate-200 text-blue-700 flex items-center justify-center font-bold text-base shadow-sm shrink-0">
+                      {req.studentName.charAt(0)}
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-slate-900 text-base leading-snug">{req.studentName}</h3>
+                      <p className="text-xs text-slate-500 font-medium mt-1">{req.grade} - {req.className}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className="font-bold text-slate-800 text-sm truncate max-w-[120px]">{req.studentName}</h3>
-                    <p className="text-[10px] text-slate-500 font-mono">{req.studentId}</p>
+                  <div className="flex justify-end">
+                    <span className={`px-3 py-1.5 rounded-lg text-xs font-bold border ${statusStyles[req.status].bg} ${statusStyles[req.status].text} ${statusStyles[req.status].border}`}>
+                      {statusStyles[req.status].label}
+                    </span>
                   </div>
                 </div>
-                <span className={`px-2 py-1 rounded-lg text-[10px] font-bold border ${statusStyles[req.status].bg} ${statusStyles[req.status].text} ${statusStyles[req.status].border}`}>
-                  {statusStyles[req.status].label}
-                </span>
               </div>
 
               {/* Card Body */}
               <div className="p-5 flex-1 space-y-4">
                 <div className="flex flex-wrap items-center gap-2 text-xs font-medium">
-                  <span className="flex items-center gap-1 bg-slate-100 text-slate-600 px-2.5 py-1 rounded-full border border-slate-200">
-                    <School size={12} className="text-slate-400" /> {req.grade} - {req.className}
-                  </span>
                   <span className="flex items-center gap-1 bg-blue-50 text-blue-700 px-2.5 py-1 rounded-full border border-blue-100">
                     <Calendar size={12} /> {req.date}
                   </span>
@@ -301,8 +303,8 @@ const StaffRequests: React.FC = () => {
                           <div key={idx} className="flex justify-between items-center text-xs p-2 rounded hover:bg-slate-50 border-b border-slate-50 last:border-0">
                             <span className="text-slate-600 font-mono">{rec.date}</span>
                             <span className={`px-2 py-0.5 rounded font-bold ${rec.status === AttendanceStatus.ABSENT ? 'bg-red-50 text-red-600' :
-                                rec.status === AttendanceStatus.LATE ? 'bg-amber-50 text-amber-600' :
-                                  'bg-emerald-50 text-emerald-600'
+                              rec.status === AttendanceStatus.LATE ? 'bg-amber-50 text-amber-600' :
+                                'bg-emerald-50 text-emerald-600'
                               }`}>
                               {rec.status === AttendanceStatus.ABSENT ? 'غائب' : rec.status === AttendanceStatus.LATE ? 'متأخر' : 'حاضر'}
                             </span>
@@ -346,7 +348,7 @@ const StaffRequests: React.FC = () => {
                     {isImage(selectedReq.attachmentUrl) && (
                       <div className="mt-3 relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100">
                         <img src={selectedReq.attachmentUrl} alt="Attachment Preview" className="w-full h-auto max-h-64 object-contain" />
-                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => window.open(selectedReq.attachmentUrl, '_blank')}>
+                        <div className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer" onClick={() => setEnlargedImage(selectedReq.attachmentUrl)}>
                           <span className="text-white font-bold flex items-center gap-2"><Eye size={20} /> تكبير الصورة</span>
                         </div>
                       </div>
@@ -371,6 +373,16 @@ const StaffRequests: React.FC = () => {
                 <X size={18} /> رفض
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Enlarged Image Modal */}
+      {enlargedImage && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-fade-in" onClick={() => setEnlargedImage(null)}>
+          <div className="relative max-w-4xl w-full flex justify-center items-center">
+            <button onClick={() => setEnlargedImage(null)} className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30 z-[70]"><X size={24} /></button>
+            <img src={enlargedImage} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain border border-white/10" alt="Enlarged" />
           </div>
         </div>
       )}

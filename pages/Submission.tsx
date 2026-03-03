@@ -387,15 +387,6 @@ const Submission: React.FC = () => {
                                 <div className="space-y-2">
                                     <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-2 mb-2">
                                         <label className="text-sm font-bold text-slate-600">تفاصيل إضافية للسبب (اختياري)</label>
-                                        <button
-                                            type="button"
-                                            onClick={handleSmartEnhance}
-                                            disabled={isEnhancing || !details}
-                                            className="text-xs bg-gradient-to-r from-purple-100 to-indigo-100 text-purple-800 px-3 py-1.5 rounded-xl font-bold flex items-center gap-1.5 hover:shadow-md transition-all disabled:opacity-50 disabled:hover:shadow-none border border-purple-200/50"
-                                        >
-                                            {isEnhancing ? <Loader2 size={14} className="animate-spin text-purple-600" /> : <Sparkles size={14} className="text-purple-600" />}
-                                            تحسين الصياغة بالذكاء الاصطناعي
-                                        </button>
                                     </div>
                                     <textarea value={details} onChange={(e) => setDetails(e.target.value)} rows={3} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-2xl text-base font-bold text-slate-700 outline-none focus:ring-4 focus:ring-purple-500/10 focus:border-purple-500 transition-all resize-none shadow-sm hover:bg-white" placeholder="اكتب تفاصيل إضافية لتوضيح العذر لإدارة المدرسة..."></textarea>
                                 </div>

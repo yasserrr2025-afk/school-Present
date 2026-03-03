@@ -371,6 +371,7 @@ const StaffStudents: React.FC = () => {
                         {[
                             { id: 'dashboard', label: 'لوحة القيادة', icon: LayoutGrid },
                             { id: 'cases', label: 'ملفاتي', icon: FileText },
+                            { id: 'directory', label: 'الدليل', icon: User },
                             { id: 'inbox', label: 'الإحالات', icon: Inbox, badge: stats.pendingRef, badgeOrange: stats.returnedRef },
                             { id: 'sessions', label: 'الجلسات', icon: MessageSquare }
                         ].map(tab => (
@@ -469,6 +470,45 @@ const StaffStudents: React.FC = () => {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                    </div>
+                )}
+
+                {/* --- DIRECTORY VIEW --- */}
+                {activeView === 'directory' && (
+                    <div className="space-y-6 animate-fade-in">
+                        <div className="flex flex-col md:flex-row justify-between items-center gap-4">
+                            <h2 className="text-lg font-bold text-slate-800 flex items-center gap-2"><User size={20} className="text-purple-600" /> دليل الطلاب</h2>
+                            <div className="relative w-full md:w-96">
+                                <Search className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
+                                <input
+                                    type="text"
+                                    placeholder="ابحث باسم الطالب أو رقمه..."
+                                    className="w-full bg-white border border-slate-200 rounded-xl py-3 pr-10 pl-4 font-bold text-sm focus:ring-2 focus:ring-purple-500 outline-none"
+                                    onChange={e => {
+                                        const query = e.target.value.toLowerCase();
+                                        const cards = document.querySelectorAll('.student-card-item');
+                                        cards.forEach((card: any) => {
+                                            const text = card.textContent?.toLowerCase() || '';
+                                            card.style.display = text.includes(query) ? 'block' : 'none';
+                                        });
+                                    }}
+                                />
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {students.map(student => (
+                                <div key={student.id} className="student-card-item bg-white p-5 rounded-2xl border border-slate-200 shadow-sm hover:shadow-md transition-all">
+                                    <div className="flex items-center gap-3 mb-4">
+                                        <div className="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-lg">{student.name.charAt(0)}</div>
+                                        <div>
+                                            <h3 className="font-bold text-slate-900 group-hover:text-purple-700 leading-tight">{student.name}</h3>
+                                            <p className="text-xs text-slate-500 mt-1">{student.grade} - {student.className}</p>
+                                        </div>
+                                    </div>
+                                    <button onClick={() => handleOpenStudent(student)} className="w-full py-2 bg-slate-50 text-purple-700 font-bold text-xs rounded-xl border border-slate-100 hover:bg-purple-100 transition-colors">فتح ملف الطالب</button>
+                                </div>
+                            ))}
                         </div>
                     </div>
                 )}

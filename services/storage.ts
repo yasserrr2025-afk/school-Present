@@ -300,12 +300,14 @@ export const uploadFile = async (file: File): Promise<string> => {
 // --- Attendance (Table: attendance) ---
 
 export const saveAttendanceRecord = async (record: AttendanceRecord): Promise<void> => {
-    const { data: existing } = await supabase.from('attendance')
+    const { data: existingRecords } = await supabase.from('attendance')
         .select('id')
         .eq('date', record.date)
         .eq('grade', record.grade)
         .eq('class_name', record.className)
-        .single();
+        .limit(1);
+
+    const existing = existingRecords && existingRecords.length > 0 ? existingRecords[0] : null;
 
     if (existing) {
         await supabase.from('attendance').update({
@@ -324,14 +326,15 @@ export const saveAttendanceRecord = async (record: AttendanceRecord): Promise<vo
 };
 
 export const getAttendanceRecordForClass = async (date: string, grade: string, className: string): Promise<AttendanceRecord | null> => {
-    const { data, error } = await supabase.from('attendance')
+    const { data: records, error } = await supabase.from('attendance')
         .select('*')
         .eq('date', date)
         .eq('grade', grade)
         .eq('class_name', className)
-        .single();
+        .limit(1);
 
-    if (error || !data) return null;
+    if (error || !records || records.length === 0) return null;
+    const data = records[0];
     return {
         id: data.id,
         date: data.date,
@@ -1077,8 +1080,11 @@ export const addReferral = async (ref: Referral) => {
     }
 };
 
-export const updateReferralStatus = async (id: string, status: string, outcome?: string) => {
-    await supabase.from('referrals').update({ status, outcome }).eq('id', id);
+export const updateReferralStatus = async (id: string, status: string, outcome?: string, notes?: string) => {
+    const updateData: any = { status };
+    if (outcome !== undefined) updateData.outcome = outcome;
+    if (notes !== undefined) updateData.notes = notes;
+    await supabase.from('referrals').update(updateData).eq('id', id);
 
     // Notify about status updates
     if (status === 'resolved' || status === 'returned_to_deputy') {

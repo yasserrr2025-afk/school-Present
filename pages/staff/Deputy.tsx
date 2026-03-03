@@ -489,7 +489,17 @@ const StaffDeputy: React.FC = () => {
     const handlePrintReferral = (referral: Referral) => {
         setReferralToPrint(referral);
         setPrintMode('referral_report');
-        setTimeout(() => { window.print(); setPrintMode('none'); }, 500);
+        setTimeout(() => {
+            const el = document.getElementById('print-letters');
+            if (el) { el.style.display = 'block'; el.classList.remove('hidden'); }
+            setTimeout(() => {
+                window.print();
+                setTimeout(() => {
+                    if (el) { el.style.display = ''; el.classList.add('hidden'); }
+                    setPrintMode('none');
+                }, 600);
+            }, 300);
+        }, 50);
     };
 
     const handlePrintPositiveDailyReport = () => {
@@ -607,7 +617,7 @@ const StaffDeputy: React.FC = () => {
 
     const handleFinalizeReferral = async () => {
         if (!referralToClose || !closeDecision.trim()) return;
-        await updateReferralStatus(referralToClose.id, 'resolved', undefined);
+        await updateReferralStatus(referralToClose.id, 'resolved', undefined, closeDecision);
         await logWorkflowAction({
             entityId: referralToClose.id,
             entityType: 'referral',
@@ -673,8 +683,9 @@ const StaffDeputy: React.FC = () => {
                 <style>{`
                     @media print {
                         body * { visibility: hidden; }
-                        #print-letters, #print-letters * { visibility: visible; }
-                        #print-letters { position: fixed; left: 0; top: 0; width: 100%; padding: 28px; background: white; z-index: 99999; display: block !important; }
+                        #print-letters:not(.hidden), #print-letters:not(.hidden) * { visibility: visible; }
+                        #print-letters:not(.hidden) { position: absolute; left: 0; top: 0; width: 100%; padding: 28px; background: white; z-index: 99999; }
+                        .hidden { display: none !important; }
                         .no-print { display: none !important; }
                     }
                 `}</style>
@@ -767,6 +778,58 @@ const StaffDeputy: React.FC = () => {
                                 </div>
                             </div>
                         )}
+                    </div>
+                )}
+                {printMode === 'referral_report' && referralToPrint && (
+                    <div style={{ textAlign: 'right', fontSize: '15px', lineHeight: '2.2', padding: '0 20px' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '4px solid #1e293b', paddingBottom: '14px', marginBottom: '24px' }}>
+                            <div style={{ textAlign: 'right', fontSize: '13px', fontWeight: 'bold', lineHeight: '2.2' }}>
+                                <div>المملكة العربية السعودية</div>
+                                <div>وزارة التعليم</div>
+                                <div style={{ fontSize: '15px', borderBottom: '1px solid #ccc', paddingBottom: '2px' }}>{SCHOOL_NAME}</div>
+                                <div style={{ fontSize: '12px', color: '#555' }}>وكالة شؤون الطلاب</div>
+                            </div>
+                            <div style={{ textAlign: 'center', flex: 1 }}>
+                                <img src="https://www.raed.net/img?id=1519976" alt="وزارة التعليم" style={{ height: '95px', objectFit: 'contain', display: 'block', margin: '0 auto' }} />
+                                <div style={{ fontWeight: '900', fontSize: '19px', margin: '10px auto', borderBottom: '2px solid #1e293b', display: 'inline-block', padding: '0 16px 4px' }}>
+                                    تقرير إحالة للموجه الطلابي
+                                </div>
+                            </div>
+                            <div style={{ textAlign: 'left', fontSize: '12px', fontWeight: 'bold', lineHeight: '2.2' }}>
+                                <div>Kingdom of Saudi Arabia</div>
+                                <div>Ministry of Education</div>
+                                <div style={{ marginTop: '4px', border: '1px solid #333', padding: '2px 10px', display: 'inline-block', fontSize: '13px' }}>
+                                    {referralToPrint.referralDate.split('T')[0]}
+                                </div>
+                            </div>
+                        </div>
+                        <h3 style={{ borderBottom: '2px solid #333', paddingBottom: '4px', marginBottom: '16px' }}>بيانات الطالب</h3>
+                        <div style={{ display: 'flex', gap: '40px', marginBottom: '20px', background: '#f8fafc', padding: '12px', borderRadius: '8px' }}>
+                            <div><strong>الاسم:</strong> {referralToPrint.studentName}</div>
+                            <div><strong>الصف:</strong> {referralToPrint.grade} - {referralToPrint.className}</div>
+                        </div>
+
+                        <h3 style={{ borderBottom: '2px solid #333', paddingBottom: '4px', marginBottom: '16px' }}>سبب الإحالة (من الوكيل)</h3>
+                        <p style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', minHeight: '60px', border: '1px solid #e2e8f0' }}>{referralToPrint.reason}</p>
+                        {referralToPrint.notes && <p style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', marginTop: '8px', border: '1px solid #e2e8f0' }}>ملاحظات: {referralToPrint.notes}</p>}
+
+                        {referralToPrint.outcome && (
+                            <>
+                                <h3 style={{ borderBottom: '2px solid #333', paddingBottom: '4px', margin: '24px 0 16px' }}>إجراء الموجه الطلابي</h3>
+                                <p style={{ background: '#f8fafc', padding: '12px', borderRadius: '8px', minHeight: '60px', border: '1px solid #e2e8f0' }}>{referralToPrint.outcome}</p>
+                            </>
+                        )}
+                        <div style={{ marginTop: '70px', display: 'flex', justifyContent: 'space-around', padding: '0 20px' }}>
+                            <div style={{ textAlign: 'center' }}>
+                                <p style={{ fontWeight: 'bold', marginBottom: '40px' }}>الموجه الطلابي</p>
+                                <p style={{ borderTop: '1px solid black', paddingTop: '4px', minWidth: '150px' }}>&nbsp;</p>
+                            </div>
+                            <div style={{ textAlign: 'center' }}>
+                                <p style={{ fontWeight: 'bold', marginBottom: '8px' }}>وكيل شؤون الطلاب</p>
+                                <p style={{ fontWeight: 'bold', color: '#1e3a8a', marginBottom: '20px' }}>{currentUser?.name}</p>
+                                <p style={{ borderTop: '1px solid black', paddingTop: '4px', minWidth: '150px' }}>&nbsp;</p>
+                            </div>
+                        </div>
                     </div>
                 )}
             </div>

@@ -24,6 +24,7 @@ const Requests: React.FC = () => {
     const [isGeneratingReply, setIsGeneratingReply] = useState(false);
     const [aiReply, setAiReply] = useState('');
     const [replyType, setReplyType] = useState<'accept' | 'reject' | null>(null);
+    const [enlargedImage, setEnlargedImage] = useState<string | null>(null);
 
     const fetchRequests = async (force = false) => {
         setLoading(true);
@@ -59,30 +60,22 @@ const Requests: React.FC = () => {
     }), [requests]);
 
     const handleStatusChangeWithReply = async (id: string, newStatus: RequestStatus) => {
-        setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus, adminReply: aiReply } : r));
+        setRequests(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r));
         if (selectedReq?.id === id) {
             setSelectedReq(null);
-            setAiReply('');
-            setReplyType(null);
         }
         try {
-            if (aiReply) {
-                await updateRequestWithReply(id, newStatus, aiReply);
-            } else {
-                await updateRequestStatus(id, newStatus);
-            }
+            await updateRequestStatus(id, newStatus);
 
             // --- WhatsApp Integration ---
             if (localStorage.getItem('whatsapp_integration') === 'true') {
                 const reqData = requests.find(r => r.id === id);
                 if (reqData) {
-                    // We need the student phone number
                     const allStudents = await getStudents();
                     const studentData = allStudents.find(s => s.studentId === reqData.studentId || s.id === reqData.studentId);
                     if (studentData && studentData.phone) {
                         const statusAr = newStatus === RequestStatus.APPROVED ? 'معتمد ✅' : 'مرفوض ❌';
-                        const message = aiReply ? aiReply : `مرحباً بك أخي ولي أمر الطالب: ${reqData.studentName}\nتم تحديث حالة طلب العذر ليوم ${reqData.date} إلى: *${statusAr}*\n\nالمدرسة.`;
-
+                        const message = `مرحباً بك أخي ولي أمر الطالب: ${reqData.studentName}\nتم تحديث حالة طلب العذر ليوم ${reqData.date} إلى: *${statusAr}*\n\nالمدرسة.`;
                         await sendWhatsAppMessage(studentData.phone, message);
                     }
                 }
@@ -264,32 +257,32 @@ const Requests: React.FC = () => {
                                 <div className={`h-1.5 w-full ${sc.bar}`}></div>
 
                                 {/* Card Header */}
-                                <div className="p-4 flex items-start justify-between gap-3 border-b border-slate-50">
-                                    <div className="flex items-start gap-3 min-w-0">
-                                        <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-700 flex items-center justify-center font-black text-lg border border-blue-100 shrink-0">
-                                            {req.studentName.charAt(0)}
+                                <div className="p-4 flex flex-col gap-3 border-b border-slate-50">
+                                    <div className="flex flex-col gap-3">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-11 h-11 rounded-2xl bg-gradient-to-br from-blue-50 to-indigo-100 text-blue-700 flex items-center justify-center font-black text-lg border border-blue-100 shrink-0">
+                                                {req.studentName.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-900 text-base leading-snug">
+                                                    {req.studentName}
+                                                </h3>
+                                                <p className="text-xs text-slate-500 font-medium mt-1">
+                                                    {req.grade} - {req.className}
+                                                </p>
+                                            </div>
                                         </div>
-                                        <div className="min-w-0">
-                                            {/* ✅ Full name — NO truncation */}
-                                            <h3 className="font-extrabold text-slate-800 text-sm leading-snug break-words">
-                                                {req.studentName}
-                                            </h3>
-                                            <p className="text-[10px] text-slate-400 font-mono mt-0.5">{req.studentId}</p>
+                                        <div className="flex justify-end">
+                                            <span className={`px-3 py-1.5 rounded-xl text-xs font-extrabold border ${sc.bg} ${sc.text} ${sc.border}`}>
+                                                {sc.label}
+                                            </span>
                                         </div>
                                     </div>
-                                    <span className={`shrink-0 px-2.5 py-1 rounded-xl text-[10px] font-extrabold border ${sc.bg} ${sc.text} ${sc.border}`}>
-                                        {sc.label}
-                                    </span>
                                 </div>
 
                                 {/* Card Body */}
                                 <div className="p-4 flex-1 space-y-3">
-                                    {/* Grade & Date chips */}
                                     <div className="flex flex-wrap gap-2">
-                                        <span className="flex items-center gap-1.5 bg-slate-50 text-slate-600 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-slate-200">
-                                            <School size={11} className="text-slate-400" />
-                                            {req.grade} - {req.className}
-                                        </span>
                                         <span className="flex items-center gap-1.5 bg-blue-50 text-blue-700 text-[11px] font-bold px-2.5 py-1.5 rounded-xl border border-blue-100">
                                             <Calendar size={11} />
                                             {req.date}
@@ -436,7 +429,7 @@ const Requests: React.FC = () => {
                                             <img src={selectedReq.attachmentUrl} alt="مرفق" className="w-full h-auto max-h-64 object-contain bg-slate-50" />
                                             <div
                                                 className="absolute inset-0 bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer rounded-2xl"
-                                                onClick={() => window.open(selectedReq.attachmentUrl, '_blank')}
+                                                onClick={() => setEnlargedImage(selectedReq.attachmentUrl)}
                                             >
                                                 <span className="text-white font-bold flex items-center gap-2 text-sm"><Eye size={18} /> تكبير الصورة</span>
                                             </div>
@@ -459,48 +452,7 @@ const Requests: React.FC = () => {
                                 </div>
                             )}
 
-                            {/* AI Reply Panel */}
-                            <div className="bg-gradient-to-br from-slate-900 to-blue-900 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
-                                <div className="absolute top-0 right-0 w-40 h-40 bg-amber-400 opacity-10 rounded-full blur-3xl translate-x-1/2 -translate-y-1/2 pointer-events-none"></div>
-                                <div className="relative z-10">
-                                    <div className="flex items-center gap-2 mb-4">
-                                        <Sparkles size={16} className="text-amber-400" />
-                                        <span className="font-bold text-sm">الرد الذكي — AI</span>
-                                    </div>
-                                    {aiReply ? (
-                                        <div className="bg-white/10 backdrop-blur-md border border-white/20 rounded-xl p-4 mb-4">
-                                            <p className="text-xs text-amber-300 font-bold mb-2">نص الرسالة المقترح:</p>
-                                            <p className="text-sm leading-relaxed">{aiReply}</p>
-                                            <button
-                                                onClick={() => navigator.clipboard.writeText(aiReply)}
-                                                className="mt-3 text-xs flex items-center gap-1.5 text-white/70 hover:text-amber-300 transition-colors"
-                                            >
-                                                <Copy size={12} /> نسخ النص
-                                            </button>
-                                        </div>
-                                    ) : (
-                                        <p className="text-xs text-blue-200/80 mb-4">اضغط على أحد الزرين لتوليد رد رسمي مناسب.</p>
-                                    )}
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => generateAiReply('accept')}
-                                            disabled={isGeneratingReply}
-                                            className="flex-1 bg-emerald-600 hover:bg-emerald-500 text-white text-xs py-2.5 px-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 border border-emerald-400/30 shadow-lg"
-                                        >
-                                            {isGeneratingReply && replyType === 'accept' ? <Loader2 size={12} className="animate-spin" /> : <Check size={14} />}
-                                            رد قبول
-                                        </button>
-                                        <button
-                                            onClick={() => generateAiReply('reject')}
-                                            disabled={isGeneratingReply}
-                                            className="flex-1 bg-white/10 hover:bg-white/20 text-white text-xs py-2.5 px-3 rounded-xl font-bold transition-all flex items-center justify-center gap-2 border border-white/10"
-                                        >
-                                            {isGeneratingReply && replyType === 'reject' ? <Loader2 size={12} className="animate-spin" /> : <X size={14} />}
-                                            رد رفض
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
+
                         </div>
 
                         {/* Footer Actions */}
@@ -518,6 +470,16 @@ const Requests: React.FC = () => {
                                 <X size={18} /> رفض العذر
                             </button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Enlarged Image Modal */}
+            {enlargedImage && (
+                <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-slate-900/90 backdrop-blur-sm animate-fade-in" onClick={() => setEnlargedImage(null)}>
+                    <div className="relative max-w-4xl w-full flex justify-center items-center">
+                        <button onClick={() => setEnlargedImage(null)} className="absolute -top-12 left-1/2 -translate-x-1/2 bg-white/20 text-white p-2 rounded-full hover:bg-white/30 z-[70]"><X size={24} /></button>
+                        <img src={enlargedImage} className="max-w-full max-h-[85vh] rounded-xl shadow-2xl object-contain border border-white/10" alt="Enlarged" />
                     </div>
                 </div>
             )}
