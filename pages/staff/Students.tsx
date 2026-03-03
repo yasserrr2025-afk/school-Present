@@ -6,7 +6,7 @@ import {
     ShieldAlert, Printer, Plus, Inbox, FileText, LayoutGrid,
     BookOpen, MessageSquare, AlertTriangle, Calendar, Loader2,
     Clock, Activity, ClipboardList, Send, Check, X, Edit, Trash2,
-    Archive, HeartHandshake, Filter, ArrowLeft, Copy, MessageCircle, Sparkles,
+    Archive, HeartHandshake, Filter, ArrowLeft, Copy, MessageCircle, Sparkles, History,
     PieChart as PieIcon, BarChart2, TrendingUp, BrainCircuit, FileOutput, QrCode, CreditCard
 } from 'lucide-react';
 import {
@@ -17,9 +17,10 @@ import {
     getStudentAttendanceHistory, getBehaviorRecords, getStudentObservations,
     addGuidanceSession, updateGuidanceSession, deleteGuidanceSession,
     updateReferralStatus, resolveAbsenceAlert, generateGuidancePlan, generateSmartContent,
-    getWalletTransactions, addWalletTransaction
+    getWalletTransactions, addWalletTransaction, getCanteenBeneficiaries, toggleCanteenBeneficiary,
+    getCanteenSettlements, settleWithCanteen
 } from '../../services/storage';
-import { Student, StaffUser, Referral, GuidanceSession, AttendanceStatus, BehaviorRecord, StudentObservation } from '../../types';
+import { Student, StaffUser, Referral, GuidanceSession, AttendanceStatus, BehaviorRecord, StudentObservation, CanteenBeneficiary, CanteenSettlement } from '../../types';
 import { useSyncData } from '../../hooks/useSyncData';
 
 
@@ -63,6 +64,9 @@ const StaffStudents: React.FC = () => {
     const [filterGrade, setFilterGrade] = useState('');
     const [loading, setLoading] = useState(true);
     const [walletTxs, setWalletTxs] = useState<any[]>([]);
+    const [beneficiaries, setBeneficiaries] = useState<CanteenBeneficiary[]>([]);
+    const [settlements, setSettlements] = useState<CanteenSettlement[]>([]);
+    const [walletSubView, setWalletSubView] = useState<'dashboard' | 'beneficiaries' | 'settlements'>('dashboard');
     const [studentDetails, setStudentDetails] = useState<{
         history: { date: string, status: AttendanceStatus }[],
         behavior: BehaviorRecord[],
@@ -112,12 +116,14 @@ const StaffStudents: React.FC = () => {
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [sData, rData, sessData, riskData, wData] = await Promise.all([
+            const [sData, rData, sessData, riskData, wData, bData, settsData] = await Promise.all([
                 getStudents(),
                 getReferrals(),
                 getGuidanceSessions(),
                 getConsecutiveAbsences(),
-                getWalletTransactions() // Added API
+                getWalletTransactions(),
+                getCanteenBeneficiaries(),
+                getCanteenSettlements()
             ]);
 
             const session = localStorage.getItem('ozr_staff_session');
@@ -140,6 +146,8 @@ const StaffStudents: React.FC = () => {
             }
             // Filter wallet transactions to only those created by the counselor
             setWalletTxs(wData.filter(w => w.createdBy === user?.id));
+            setBeneficiaries(bData);
+            setSettlements(settsData);
 
         } catch (e) {
             console.error(e);
@@ -155,7 +163,9 @@ const StaffStudents: React.FC = () => {
     useSyncData('students', () => fetchData());
     useSyncData('referrals', () => fetchData());
     useSyncData('guidance_sessions', () => fetchData());
-    useSyncData('wallet_transactions', () => fetchData()); // Sync for wallet
+    useSyncData('wallet_transactions', () => fetchData());
+    useSyncData('canteen_beneficiaries', () => fetchData());
+    useSyncData('canteen_settlements', () => fetchData());
 
     // --- Derived Statistics ---
     const stats = useMemo(() => {
@@ -1112,118 +1122,300 @@ const StaffStudents: React.FC = () => {
                         <div>
                             <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
                                 <CreditCard className="text-purple-600" />
-                                دعم المقصف
+                                إدارة المقصف والدعم
                             </h2>
-                            <p className="text-sm text-slate-500 mt-1">تخصيص رصيد يومي للطلاب بحد أقصى 5 ريال</p>
+                            <p className="text-sm text-slate-500 mt-1">تخصيص رصيد للطلاب ومتابعة الإغلاقات المالية</p>
                         </div>
-                        <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0">
-                            <input
-                                type="text"
-                                placeholder="بحث بالاسم أو الهوية..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-sm outline-none focus:ring-2 focus:ring-purple-200"
-                            />
-                            <select
-                                value={filterGrade}
-                                onChange={(e) => setFilterGrade(e.target.value)}
-                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-sm outline-none focus:ring-2 focus:ring-purple-200"
-                            >
-                                <option value="">جميع الصفوف</option>
-                                {[...new Set(students.map(s => s.grade))].sort().map(g => <option key={g} value={g}>{g}</option>)}
-                            </select>
-                        </div>
-                        <div className="flex gap-2">
+                        <div className="flex flex-wrap gap-2 w-full md:w-auto">
                             <button
-                                onClick={() => { setPrintFilter('daily'); setPrintMode('canteen_report'); setTimeout(() => window.print(), 100); }}
-                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 border border-slate-200 text-sm"
+                                onClick={() => setWalletSubView('dashboard')}
+                                className={`px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 text-sm border ${walletSubView === 'dashboard' ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
                             >
-                                <Printer size={16} /> طباعة التقرير اليومي
+                                <LayoutGrid size={16} /> لوحة التحكم
                             </button>
                             <button
-                                onClick={() => { setPrintFilter('all_time'); setPrintMode('canteen_report'); setTimeout(() => window.print(), 100); }}
-                                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 border border-indigo-200 text-sm"
+                                onClick={() => setWalletSubView('beneficiaries')}
+                                className={`px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 text-sm border ${walletSubView === 'beneficiaries' ? 'bg-purple-600 text-white border-purple-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
                             >
-                                <Printer size={16} /> تقرير إجمالي (للمحاسبة)
+                                <Users size={16} /> الطلاب المستحقين لدعم
+                            </button>
+                            <button
+                                onClick={() => setWalletSubView('settlements')}
+                                className={`px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 text-sm border ${walletSubView === 'settlements' ? 'bg-emerald-600 text-white border-emerald-600' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'}`}
+                            >
+                                <CheckCircle size={16} /> تصفية الحسابات
                             </button>
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                        {students.filter(s => {
-                            const matchSearch = s.name.includes(searchTerm) || s.studentId.includes(searchTerm);
-                            const matchGrade = filterGrade ? s.grade === filterGrade : true;
-                            return matchSearch && matchGrade;
-                        }).map(student => {
-                            const studentTxs = walletTxs.filter(t => t.studentId === student.studentId);
-                            const totalAdded = studentTxs.reduce((sum, tx) => tx.type === 'recharge' ? sum + tx.amount : sum, 0);
-
-                            // Check if student already received support today (5 riyals max per day per student)
-                            const todayTxs = studentTxs.filter(tx => tx.timestamp.startsWith(today) && tx.type === 'recharge');
-                            const todayAdded = todayTxs.reduce((sum, tx) => sum + tx.amount, 0);
-                            const canAdd = todayAdded < 5;
-
-                            return (
-                                <div key={student.id} className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
-                                    <div className="flex justify-between items-start mb-4">
-                                        <div className="flex items-center gap-3">
-                                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 border border-slate-200">
-                                                {student.name.charAt(0)}
-                                            </div>
-                                            <div>
-                                                <h3 className="font-bold text-slate-800 text-sm truncate max-w-[150px]">{student.name}</h3>
-                                                <p className="text-xs text-slate-500 font-mono mt-0.5">{student.studentId} | {student.className}</p>
-                                            </div>
-                                        </div>
-                                    </div>
-
-                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-4 flex justify-between items-center">
-                                        <div>
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">إجمالي الدعم</p>
-                                            <p className="font-black text-purple-700">{totalAdded} <span className="text-xs font-bold text-slate-500">ريال</span></p>
-                                        </div>
-                                        <div className="text-center">
-                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">دعم اليوم</p>
-                                            <p className={`font-black ${todayAdded >= 5 ? 'text-emerald-600' : 'text-slate-700'}`}>{todayAdded}/5 <span className="text-[10px] font-bold text-slate-500">ريال</span></p>
-                                        </div>
-                                    </div>
-
-                                    <button
-                                        onClick={async () => {
-                                            const amount = prompt(`أدخل المبلغ المطلوب إضافته للطالب ${student.name} (المتبقي لليوم: ${5 - todayAdded} ريال):`);
-                                            if (!amount) return;
-                                            const numParams = parseFloat(amount);
-                                            if (isNaN(numParams) || numParams <= 0) return alert('الرجاء إدخال مبلغ صحيح');
-                                            if (todayAdded + numParams > 5) return alert('تجاوزت الحد المسموح به لليوم (5 ريال)');
-
-                                            setLoading(true);
-                                            try {
-                                                await addWalletTransaction({
-                                                    studentId: student.studentId,
-                                                    type: 'recharge',
-                                                    amount: numParams,
-                                                    description: 'دعم من الموجه الطلابي',
-                                                    createdBy: currentUser?.id
-                                                });
-                                                alert('تمت إضافة الرصيد بنجاح');
-                                                fetchData();
-                                            } catch (e) {
-                                                alert('حدث خطأ أثناء إضافة الرصيد');
-                                            } finally {
-                                                setLoading(false);
-                                            }
-                                        }}
-                                        disabled={!canAdd}
-                                        className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm
-                                            ${canAdd ? 'bg-purple-600 text-white hover:bg-purple-700 hover:shadow-md' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
-                                        `}
+                    {walletSubView === 'dashboard' && (
+                        <>
+                            <div className="flex flex-wrap justify-between items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-200">
+                                <div className="flex gap-2 w-full md:w-auto">
+                                    <input
+                                        type="text"
+                                        placeholder="بحث بالاسم أو الهوية..."
+                                        value={searchTerm}
+                                        onChange={(e) => setSearchTerm(e.target.value)}
+                                        className="bg-white border border-slate-200 rounded-xl px-4 py-2 font-bold text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                                    />
+                                    <select
+                                        value={filterGrade}
+                                        onChange={(e) => setFilterGrade(e.target.value)}
+                                        className="bg-white border border-slate-200 rounded-xl px-4 py-2 font-bold text-sm outline-none focus:ring-2 focus:ring-purple-200"
                                     >
-                                        <Plus size={16} /> {canAdd ? 'إضافة رصيد' : 'تم بلوغ الحد اليومي'}
+                                        <option value="">جميع الصفوف</option>
+                                        {[...new Set(students.map(s => s.grade))].sort().map(g => <option key={g} value={g}>{g}</option>)}
+                                    </select>
+                                </div>
+                                <div className="flex gap-2">
+                                    <button
+                                        onClick={() => { setPrintFilter('daily'); setPrintMode('canteen_report'); setTimeout(() => window.print(), 100); }}
+                                        className="bg-white hover:bg-slate-100 text-slate-700 px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 border border-slate-200 text-sm shadow-sm"
+                                    >
+                                        <Printer size={16} /> التقرير اليومي
+                                    </button>
+                                    <button
+                                        onClick={() => { setPrintFilter('all_time'); setPrintMode('canteen_report'); setTimeout(() => window.print(), 100); }}
+                                        className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2 rounded-xl font-bold transition flex items-center gap-2 border border-indigo-200 text-sm shadow-sm"
+                                    >
+                                        <Printer size={16} /> تقرير إجمالي
                                     </button>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                                {students.filter(s => {
+                                    const matchSearch = s.name.includes(searchTerm) || s.studentId.includes(searchTerm);
+                                    const matchGrade = filterGrade ? s.grade === filterGrade : true;
+                                    return matchSearch && matchGrade;
+                                }).map(student => {
+                                    const studentTxs = walletTxs.filter(t => t.studentId === student.studentId);
+                                    let balance = 0;
+                                    studentTxs.forEach(t => {
+                                        if (t.type === 'recharge') balance += t.amount;
+                                        else balance -= t.amount;
+                                    });
+
+                                    const todayTxs = studentTxs.filter(tx => tx.timestamp.startsWith(today) && tx.type === 'recharge');
+                                    const todayAdded = todayTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
+                                    const isBeneficiary = beneficiaries.find(b => b.studentId === student.studentId)?.isActive;
+
+                                    return (
+                                        <div key={student.id} className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between hover:shadow-md transition-all">
+                                            <div className="flex justify-between items-start mb-4">
+                                                <div className="flex items-center gap-3">
+                                                    <div className="w-12 h-12 rounded-full bg-slate-50 flex items-center justify-center font-bold text-slate-600 border border-slate-200 text-lg">
+                                                        {student.name.charAt(0)}
+                                                    </div>
+                                                    <div>
+                                                        <h3 className="font-bold text-slate-800 text-sm leading-tight max-w-[180px]" title={student.name}>{student.name}</h3>
+                                                        <p className="text-xs text-slate-500 font-mono mt-0.5">{student.studentId} | {student.className}</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+
+                                            <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-4 flex justify-between items-center">
+                                                <div>
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">الرصيد المتاح</p>
+                                                    <p className={`font-black ${balance > 0 ? 'text-emerald-600' : 'text-slate-600'}`}>{balance} <span className="text-xs font-bold text-slate-500">ريال</span></p>
+                                                </div>
+                                                <div className="text-center">
+                                                    <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">شحن اليوم</p>
+                                                    <p className="font-black text-purple-700">{todayAdded} <span className="text-[10px] font-bold text-slate-500">ريال</span></p>
+                                                </div>
+                                            </div>
+
+                                            <div className="flex gap-2">
+                                                <button
+                                                    onClick={async () => {
+                                                        const amount = prompt(`أدخل المبلغ المطلوب إضافته للطالب ${student.name}:`);
+                                                        if (!amount) return;
+                                                        const numParams = parseFloat(amount);
+                                                        if (isNaN(numParams) || numParams <= 0) return alert('الرجاء إدخال مبلغ صحيح');
+
+                                                        setLoading(true);
+                                                        try {
+                                                            await addWalletTransaction({
+                                                                studentId: student.studentId,
+                                                                type: 'recharge',
+                                                                amount: numParams,
+                                                                description: 'دعم فردي من الموجه الطلابي',
+                                                                createdBy: currentUser?.id
+                                                            });
+                                                            alert('تمت إضافة الرصيد بنجاح');
+                                                            fetchData();
+                                                        } catch (e) {
+                                                            alert('حدث خطأ أثناء إضافة الرصيد');
+                                                        } finally {
+                                                            setLoading(false);
+                                                        }
+                                                    }}
+                                                    className="flex-1 py-2.5 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all text-xs border border-purple-200 bg-purple-50 text-purple-700 hover:bg-purple-600 hover:text-white"
+                                                >
+                                                    <Plus size={14} /> شحن يدوي
+                                                </button>
+
+                                                <button
+                                                    onClick={async () => {
+                                                        setLoading(true);
+                                                        try {
+                                                            await toggleCanteenBeneficiary(student, 5);
+                                                            fetchData();
+                                                        } catch (e) { console.error(e); }
+                                                        finally { setLoading(false); }
+                                                    }}
+                                                    className={`py-2.5 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition-all text-xs border ${isBeneficiary ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-red-50 hover:text-red-600 hover:border-red-200' : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-emerald-50 hover:text-emerald-700'}`}
+                                                    title={isBeneficiary ? 'إزالة من قائمة الدعم التلقائي' : 'إضافة لقائمة الدعم التلقائي المستمر'}
+                                                >
+                                                    {isBeneficiary ? <CheckCircle size={14} className="text-emerald-600" /> : <ShieldAlert size={14} />}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </>
+                    )}
+
+                    {walletSubView === 'beneficiaries' && (
+                        <div className="space-y-6 animate-fade-in">
+                            <div className="bg-purple-50 border border-purple-100 p-6 rounded-3xl flex flex-col md:flex-row justify-between items-center gap-4">
+                                <div>
+                                    <h3 className="font-extrabold text-purple-900 text-lg flex items-center gap-2">
+                                        <Sparkles size={20} className="text-purple-600" />
+                                        قائمة الطلاب المستحقين للدعم اليومي
+                                    </h3>
+                                    <p className="text-purple-700 text-sm mt-1">
+                                        الطلاب في هذه القائمة سيتم شحن حساباتهم تلقائياً عند الضغط على زر التوزيع، بحيث يضاف {5} ريالات لكل طالب نزل رصيده عن 5 ريالات.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={async () => {
+                                        if (!confirm('هل أنت متأكد من توزيع الدعم لليوم الحالي للطلاب المستحقين؟')) return;
+                                        setLoading(true);
+                                        try {
+                                            for (const b of beneficiaries.filter(x => x.isActive)) {
+                                                const studentTxs = walletTxs.filter(t => t.studentId === b.studentId);
+                                                let balance = 0;
+                                                studentTxs.forEach(t => {
+                                                    if (t.type === 'recharge') balance += t.amount;
+                                                    else balance -= t.amount;
+                                                });
+
+                                                // Automatic dynamic distribution: If balance below 5, add the `dailyAllowance` (which is 5 by default)
+                                                if (balance < 5) {
+                                                    await addWalletTransaction({
+                                                        studentId: b.studentId,
+                                                        type: 'recharge',
+                                                        amount: b.dailyAllowance || 5,
+                                                        description: 'دعم يومي أوتوماتيكي',
+                                                        createdBy: currentUser?.id
+                                                    });
+                                                }
+                                            }
+                                            alert('تم توزيع الدعم بنجاح للمستحقين الذين أرصدتهم أقل من 5 ريالات.');
+                                            fetchData();
+                                        } catch (e: any) { alert('خطأ في العملية: ' + e.message); }
+                                        finally { setLoading(false); }
+                                    }}
+                                    className="bg-purple-600 hover:bg-purple-700 text-white font-bold py-3 px-6 rounded-xl shadow-md transition-all flex items-center gap-2 animate-bounce hover:animate-none"
+                                >
+                                    <Activity size={18} /> توزيع الدعم اليومي للجميع
+                                </button>
+                            </div>
+
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                {beneficiaries.filter(b => b.isActive).length === 0 ? (
+                                    <div className="col-span-full py-16 text-center text-slate-400">
+                                        <Users size={48} className="mx-auto mb-3 opacity-30" />
+                                        <p className="font-bold">لا يوجد طلاب في قائمة المستحقين حالياً.</p>
+                                        <p className="text-sm">قم بإضافتهم من لوحة تحكم المقصف.</p>
+                                    </div>
+                                ) : (
+                                    beneficiaries.filter(b => b.isActive).map((b, idx) => {
+                                        const studentTxs = walletTxs.filter(t => t.studentId === b.studentId);
+                                        let balance = 0;
+                                        studentTxs.forEach(t => {
+                                            if (t.type === 'recharge') balance += t.amount;
+                                            else balance -= t.amount;
+                                        });
+
+                                        return (
+                                            <div key={idx} className="bg-white border-2 border-purple-100 rounded-2xl p-4 shadow-sm hover:shadow-md transition">
+                                                <div className="flex justify-between items-start mb-3">
+                                                    <h4 className="font-bold text-slate-800 text-sm leading-snug">{b.studentName}</h4>
+                                                    <span className="bg-purple-100 text-purple-700 text-[10px] font-bold px-2 py-0.5 rounded-md">مستحق</span>
+                                                </div>
+                                                <div className="text-xs text-slate-500 mb-3">{b.grade} - {b.className}</div>
+                                                <div className="flex justify-between items-center bg-slate-50 p-2 rounded-xl">
+                                                    <span className="text-xs font-bold text-slate-500">الرصيد المتاح:</span>
+                                                    <span className={`font-black ${balance < 5 ? 'text-red-500' : 'text-emerald-600'}`}>{balance} ريال</span>
+                                                </div>
+                                            </div>
+                                        );
+                                    })
+                                )}
+                            </div>
+                        </div>
+                    )}
+
+                    {walletSubView === 'settlements' && (() => {
+                        const unsettledTxs = walletTxs.filter(tx => tx.type === 'recharge' && !tx.isSettled);
+                        const totalDebt = unsettledTxs.reduce((sum, tx) => sum + tx.amount, 0);
+
+                        return (
+                            <div className="space-y-6 animate-fade-in">
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                    <div className="bg-red-50 border border-red-100 p-6 rounded-3xl flex flex-col justify-between">
+                                        <div>
+                                            <h3 className="font-bold text-red-900 flex items-center gap-2 mb-2"><AlertTriangle size={18} /> المبالغ المعلقة (ديون المقصف)</h3>
+                                            <p className="text-red-700 text-sm mb-6">إجمالي مبالغ الشحن التي تمت للطلاب ولم يتم إصدار تصفية مالية بها لصاحب المقصف.</p>
+                                        </div>
+                                        <div className="flex justify-between items-end">
+                                            <p className="text-5xl font-black text-red-600">{totalDebt} <span className="text-lg">ريال</span></p>
+                                            <button
+                                                disabled={totalDebt <= 0 || loading}
+                                                onClick={async () => {
+                                                    if (!confirm(`هل أنت متأكد من تصفية مبلغ ${totalDebt} ريال مع المقصف؟`)) return;
+                                                    setLoading(true);
+                                                    try {
+                                                        await settleWithCanteen(totalDebt, currentUser?.id || '', 'تصفية ديون');
+                                                        alert('تم تسديد المقصف بنجاح وإغلاق الحسابات.');
+                                                        fetchData();
+                                                    } catch (e: any) { alert(e.message) }
+                                                    finally { setLoading(false); }
+                                                }}
+                                                className={`py-3 px-6 rounded-xl font-bold transition flex items-center gap-2 shadow-md ${totalDebt > 0 ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-slate-200 text-slate-400 cursor-not-allowed'}`}
+                                            >
+                                                <CheckCircle size={18} /> إغلاق وتصفية
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-white border border-slate-200 p-6 rounded-3xl col-span-1 md:col-span-1">
+                                        <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><History size={18} className="text-emerald-600" /> سجل التصفيات السابقة</h3>
+                                        <div className="space-y-3 max-h-64 overflow-y-auto">
+                                            {settlements.length === 0 ? (
+                                                <p className="text-sm text-slate-400 text-center py-6">لا توجد تصفيات مالية سابقة.</p>
+                                            ) : (
+                                                settlements.map((s, idx) => (
+                                                    <div key={idx} className="flex justify-between items-center p-3 hover:bg-slate-50 border border-slate-100 rounded-xl transition">
+                                                        <div>
+                                                            <p className="font-bold text-slate-800 text-sm">{s.amount} ريال</p>
+                                                            <p className="text-xs text-slate-500">{s.notes || 'تصفية دورية'}</p>
+                                                        </div>
+                                                        <span className="text-xs font-mono font-bold text-slate-400">{s.date}</span>
+                                                    </div>
+                                                ))
+                                            )}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        );
+                    })()}
                 </div>
             )}
         </>

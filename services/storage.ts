@@ -1466,7 +1466,8 @@ export const getWalletTransactions = async (studentId?: string): Promise<any[]> 
         amount: tx.amount,
         description: tx.description,
         createdBy: tx.created_by,
-        timestamp: tx.timestamp
+        timestamp: tx.timestamp,
+        isSettled: tx.is_settled
     }));
 };
 
@@ -1488,6 +1489,71 @@ export const addWalletTransaction = async (tx: any): Promise<void> => {
         description: tx.description,
         created_by: tx.createdBy
     });
+};
+
+export const getCanteenBeneficiaries = async (): Promise<any[]> => {
+    const { data, error } = await supabase.from('canteen_beneficiaries').select('*');
+    if (error) return [];
+    return data.map((b: any) => ({
+        id: b.id,
+        studentId: b.student_id,
+        studentName: b.student_name,
+        grade: b.grade,
+        className: b.class_name,
+        dailyAllowance: b.daily_allowance,
+        isActive: b.is_active,
+        createdAt: b.created_at
+    }));
+};
+
+export const toggleCanteenBeneficiary = async (student: any, dailyAllowance: number = 5): Promise<void> => {
+    const { data } = await supabase.from('canteen_beneficiaries').select('*').eq('student_id', student.studentId).single();
+    if (data) {
+        // Toggle if exists or update allowance
+        await supabase.from('canteen_beneficiaries').update({
+            is_active: !data.is_active,
+            daily_allowance: dailyAllowance
+        }).eq('id', data.id);
+    } else {
+        await supabase.from('canteen_beneficiaries').insert({
+            student_id: student.studentId,
+            student_name: student.name,
+            grade: student.grade,
+            class_name: student.className,
+            daily_allowance: dailyAllowance,
+            is_active: true
+        });
+    }
+};
+
+export const getCanteenSettlements = async (): Promise<any[]> => {
+    const { data, error } = await supabase.from('canteen_settlements').select('*').order('date', { ascending: false });
+    if (error) return [];
+    return data.map((s: any) => ({
+        id: s.id,
+        amount: s.amount,
+        date: s.date,
+        settledBy: s.settled_by,
+        notes: s.notes,
+        createdAt: s.created_at
+    }));
+};
+
+export const settleWithCanteen = async (amount: number, staffId: string, notes?: string): Promise<void> => {
+    // 1. Insert settlement
+    const { error } = await supabase.from('canteen_settlements').insert({
+        amount,
+        date: new Date().toISOString().split('T')[0],
+        settled_by: staffId,
+        notes
+    });
+    if (error) throw new Error(error.message);
+
+    // 2. Mark unsettled recharges as settled
+    await supabase.from('wallet_transactions')
+        .update({ is_settled: true })
+        .eq('type', 'recharge')
+        .eq('is_settled', false);
 };
 
 // --- School Feedback ---

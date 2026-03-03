@@ -304,6 +304,27 @@ export interface WalletTransaction {
   description: string;
   timestamp: string;
   createdBy: string;
+  isSettled?: boolean; // True if it has been settled with canteen
+}
+
+export interface CanteenBeneficiary {
+  id: string;
+  studentId: string;
+  studentName: string;
+  grade: string;
+  className: string;
+  dailyAllowance: number;
+  isActive: boolean;
+  createdAt: string;
+}
+
+export interface CanteenSettlement {
+  id: string;
+  amount: number;
+  date: string;
+  settledBy: string;
+  notes?: string;
+  createdAt: string;
 }
 
 export interface StudentWallet {
