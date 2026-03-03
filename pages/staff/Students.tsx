@@ -7,7 +7,7 @@ import {
     BookOpen, MessageSquare, AlertTriangle, Calendar, Loader2,
     Clock, Activity, ClipboardList, Send, Check, X, Edit, Trash2,
     Archive, HeartHandshake, Filter, ArrowLeft, Copy, MessageCircle, Sparkles,
-    PieChart as PieIcon, BarChart2, TrendingUp, BrainCircuit, FileOutput, QrCode
+    PieChart as PieIcon, BarChart2, TrendingUp, BrainCircuit, FileOutput, QrCode, CreditCard
 } from 'lucide-react';
 import {
     BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend
@@ -16,7 +16,8 @@ import {
     getStudents, getReferrals, getGuidanceSessions, getConsecutiveAbsences,
     getStudentAttendanceHistory, getBehaviorRecords, getStudentObservations,
     addGuidanceSession, updateGuidanceSession, deleteGuidanceSession,
-    updateReferralStatus, resolveAbsenceAlert, generateGuidancePlan, generateSmartContent
+    updateReferralStatus, resolveAbsenceAlert, generateGuidancePlan, generateSmartContent,
+    getWalletTransactions, addWalletTransaction
 } from '../../services/storage';
 import { Student, StaffUser, Referral, GuidanceSession, AttendanceStatus, BehaviorRecord, StudentObservation } from '../../types';
 import { useSyncData } from '../../hooks/useSyncData';
@@ -57,10 +58,11 @@ const StaffStudents: React.FC = () => {
     const [sessions, setSessions] = useState<GuidanceSession[]>([]);
     const [activeRiskList, setActiveRiskList] = useState<any[]>([]);
 
-    const [activeView, setActiveView] = useState<'dashboard' | 'inbox' | 'sessions' | 'cases'>('dashboard');
+    const [activeView, setActiveView] = useState<'dashboard' | 'inbox' | 'sessions' | 'cases' | 'directory' | 'wallet'>('dashboard');
     const [searchTerm, setSearchTerm] = useState('');
     const [filterGrade, setFilterGrade] = useState('');
     const [loading, setLoading] = useState(true);
+    const [walletTxs, setWalletTxs] = useState<any[]>([]);
     const [studentDetails, setStudentDetails] = useState<{
         history: { date: string, status: AttendanceStatus }[],
         behavior: BehaviorRecord[],
@@ -92,7 +94,8 @@ const StaffStudents: React.FC = () => {
     const [isAnalyzingCase, setIsAnalyzingCase] = useState(false);
 
     // Print State
-    const [printMode, setPrintMode] = useState<'none' | 'case_study' | 'session_log'>('none');
+    const [printMode, setPrintMode] = useState<'none' | 'case_study' | 'session_log' | 'canteen_report'>('none');
+    const [printFilter, setPrintFilter] = useState<'daily' | 'all_time'>('daily');
 
     // Constants
     const today = new Date().toISOString().split('T')[0];
@@ -104,22 +107,40 @@ const StaffStudents: React.FC = () => {
             const user = JSON.parse(session);
             setCurrentUser(user);
         }
-        fetchData();
     }, []);
 
     const fetchData = async () => {
         setLoading(true);
         try {
-            const [sData, rData, sessData, riskData] = await Promise.all([
+            const [sData, rData, sessData, riskData, wData] = await Promise.all([
                 getStudents(),
                 getReferrals(),
                 getGuidanceSessions(),
-                getConsecutiveAbsences()
+                getConsecutiveAbsences(),
+                getWalletTransactions() // Added API
             ]);
-            setStudents(sData);
-            setReferrals(rData);
-            setSessions(sessData);
-            setActiveRiskList(riskData);
+
+            const session = localStorage.getItem('ozr_staff_session');
+            const user = session ? JSON.parse(session) : null;
+            const assignments = user?.assignments || [];
+
+            if (assignments.length > 0) {
+                setStudents(sData.filter(s => assignments.some((a: any) => a.grade === s.grade && a.className === s.className)));
+                setReferrals(rData.filter(r => assignments.some((a: any) => a.grade === r.grade && a.className === r.className)));
+                setSessions(sessData.filter(session => {
+                    const student = sData.find(s => s.studentId === session.studentId);
+                    return student && assignments.some((a: any) => a.grade === student.grade && a.className === student.className);
+                }));
+                setActiveRiskList(riskData.filter(risk => assignments.some((a: any) => a.grade === risk.grade && a.className === risk.className)));
+            } else {
+                setStudents(sData);
+                setReferrals(rData);
+                setSessions(sessData);
+                setActiveRiskList(riskData);
+            }
+            // Filter wallet transactions to only those created by the counselor
+            setWalletTxs(wData.filter(w => w.createdBy === user?.id));
+
         } catch (e) {
             console.error(e);
         } finally {
@@ -127,9 +148,14 @@ const StaffStudents: React.FC = () => {
         }
     };
 
-    useSyncData('students', fetchData);
-    useSyncData('referrals', fetchData);
-    useSyncData('guidance_sessions', fetchData);
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    useSyncData('students', () => fetchData());
+    useSyncData('referrals', () => fetchData());
+    useSyncData('guidance_sessions', () => fetchData());
+    useSyncData('wallet_transactions', () => fetchData()); // Sync for wallet
 
     // --- Derived Statistics ---
     const stats = useMemo(() => {
@@ -348,6 +374,62 @@ const StaffStudents: React.FC = () => {
                             </div>
                         </div>
                     )}
+
+                    {printMode === 'canteen_report' && (
+                        <div>
+                            <OfficialCounselorHeader title={`تقرير حساب المقصف المالي (${printFilter === 'daily' ? 'يومي' : 'شامل'})`} date={new Date().toLocaleDateString('ar-SA')} />
+                            <div className="mb-6 mt-4">
+                                <table className="w-full text-right border-collapse border border-black text-sm">
+                                    <thead>
+                                        <tr className="bg-gray-100">
+                                            <th className="border p-2">م</th>
+                                            <th className="border p-2">اسم الطالب</th>
+                                            <th className="border p-2">الصف والفصل</th>
+                                            <th className="border p-2">التاريخ والوقت</th>
+                                            <th className="border p-2">المبلغ (ريال)</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {(() => {
+                                            const printTxs = walletTxs
+                                                .filter(tx => tx.type === 'recharge' && (printFilter === 'daily' ? tx.timestamp.startsWith(today) : true))
+                                                .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+
+                                            if (printTxs.length === 0) return <tr><td colSpan={5} className="border p-4 text-center">لا يوجد بيانات للطباعة</td></tr>;
+
+                                            let totalPrintAmount = 0;
+                                            return (
+                                                <>
+                                                    {printTxs.map((tx, idx) => {
+                                                        const st = students.find(s => s.studentId === tx.studentId);
+                                                        totalPrintAmount += tx.amount;
+                                                        return (
+                                                            <tr key={idx}>
+                                                                <td className="border p-2 text-center">{idx + 1}</td>
+                                                                <td className="border p-2 font-bold">{st?.name || tx.studentId}</td>
+                                                                <td className="border p-2">{st ? `${st.grade} - ${st.className}` : ''}</td>
+                                                                <td className="border p-2" dir="ltr">{new Date(tx.timestamp).toLocaleString('ar-SA')}</td>
+                                                                <td className="border p-2 text-center font-bold">{tx.amount}</td>
+                                                            </tr>
+                                                        );
+                                                    })}
+                                                    <tr className="bg-gray-50 border-t-2 border-black">
+                                                        <td colSpan={4} className="border p-2 text-left font-black">الإجمالي الكلي:</td>
+                                                        <td className="border p-2 text-center font-black text-lg">{totalPrintAmount} ريال</td>
+                                                    </tr>
+                                                </>
+                                            );
+                                        })()}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div className="flex justify-between mt-12 px-8">
+                                <div className="text-center"><p className="font-bold">الموجه الطلابي</p><p>{currentUser?.name}</p></div>
+                                <div className="text-center"><p className="font-bold">المحاسب المفوض / مسؤول المقصف</p><p>....................</p></div>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
@@ -373,7 +455,8 @@ const StaffStudents: React.FC = () => {
                             { id: 'cases', label: 'ملفاتي', icon: FileText },
                             { id: 'directory', label: 'الدليل', icon: User },
                             { id: 'inbox', label: 'الإحالات', icon: Inbox, badge: stats.pendingRef, badgeOrange: stats.returnedRef },
-                            { id: 'sessions', label: 'الجلسات', icon: MessageSquare }
+                            { id: 'sessions', label: 'الجلسات', icon: MessageSquare },
+                            { id: 'wallet', label: 'دعم المقصف', icon: CreditCard }
                         ].map(tab => (
                             <button key={tab.id} onClick={() => setActiveView(tab.id as any)} className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all whitespace-nowrap ${activeView === tab.id ? 'bg-white text-purple-700 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}>
                                 <tab.icon size={16} /> <span className="hidden md:inline">{tab.label}</span>
@@ -1020,7 +1103,129 @@ const StaffStudents: React.FC = () => {
                         </div>
                     </div>
                 )}
-            </div >
+            </div>
+
+            {/* WALLET VIEW */}
+            {activeView === 'wallet' && (
+                <div className="space-y-6 animate-fade-in">
+                    <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white p-5 rounded-3xl shadow-sm border border-slate-200">
+                        <div>
+                            <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <CreditCard className="text-purple-600" />
+                                دعم المقصف
+                            </h2>
+                            <p className="text-sm text-slate-500 mt-1">تخصيص رصيد يومي للطلاب بحد أقصى 5 ريال</p>
+                        </div>
+                        <div className="flex gap-2 w-full md:w-auto mt-4 md:mt-0">
+                            <input
+                                type="text"
+                                placeholder="بحث بالاسم أو الهوية..."
+                                value={searchTerm}
+                                onChange={(e) => setSearchTerm(e.target.value)}
+                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                            />
+                            <select
+                                value={filterGrade}
+                                onChange={(e) => setFilterGrade(e.target.value)}
+                                className="bg-slate-50 border border-slate-200 rounded-xl px-4 py-2 font-bold text-sm outline-none focus:ring-2 focus:ring-purple-200"
+                            >
+                                <option value="">جميع الصفوف</option>
+                                {[...new Set(students.map(s => s.grade))].sort().map(g => <option key={g} value={g}>{g}</option>)}
+                            </select>
+                        </div>
+                        <div className="flex gap-2">
+                            <button
+                                onClick={() => { setPrintFilter('daily'); setPrintMode('canteen_report'); setTimeout(() => window.print(), 100); }}
+                                className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 border border-slate-200 text-sm"
+                            >
+                                <Printer size={16} /> طباعة التقرير اليومي
+                            </button>
+                            <button
+                                onClick={() => { setPrintFilter('all_time'); setPrintMode('canteen_report'); setTimeout(() => window.print(), 100); }}
+                                className="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 px-4 py-2.5 rounded-xl font-bold transition flex items-center gap-2 border border-indigo-200 text-sm"
+                            >
+                                <Printer size={16} /> تقرير إجمالي (للمحاسبة)
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {students.filter(s => {
+                            const matchSearch = s.name.includes(searchTerm) || s.studentId.includes(searchTerm);
+                            const matchGrade = filterGrade ? s.grade === filterGrade : true;
+                            return matchSearch && matchGrade;
+                        }).map(student => {
+                            const studentTxs = walletTxs.filter(t => t.studentId === student.studentId);
+                            const totalAdded = studentTxs.reduce((sum, tx) => tx.type === 'recharge' ? sum + tx.amount : sum, 0);
+
+                            // Check if student already received support today (5 riyals max per day per student)
+                            const todayTxs = studentTxs.filter(tx => tx.timestamp.startsWith(today) && tx.type === 'recharge');
+                            const todayAdded = todayTxs.reduce((sum, tx) => sum + tx.amount, 0);
+                            const canAdd = todayAdded < 5;
+
+                            return (
+                                <div key={student.id} className="bg-white rounded-3xl p-5 border border-slate-200 shadow-sm flex flex-col justify-between">
+                                    <div className="flex justify-between items-start mb-4">
+                                        <div className="flex items-center gap-3">
+                                            <div className="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center font-bold text-slate-600 border border-slate-200">
+                                                {student.name.charAt(0)}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-slate-800 text-sm truncate max-w-[150px]">{student.name}</h3>
+                                                <p className="text-xs text-slate-500 font-mono mt-0.5">{student.studentId} | {student.className}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 mb-4 flex justify-between items-center">
+                                        <div>
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">إجمالي الدعم</p>
+                                            <p className="font-black text-purple-700">{totalAdded} <span className="text-xs font-bold text-slate-500">ريال</span></p>
+                                        </div>
+                                        <div className="text-center">
+                                            <p className="text-[10px] text-slate-400 font-bold uppercase mb-1">دعم اليوم</p>
+                                            <p className={`font-black ${todayAdded >= 5 ? 'text-emerald-600' : 'text-slate-700'}`}>{todayAdded}/5 <span className="text-[10px] font-bold text-slate-500">ريال</span></p>
+                                        </div>
+                                    </div>
+
+                                    <button
+                                        onClick={async () => {
+                                            const amount = prompt(`أدخل المبلغ المطلوب إضافته للطالب ${student.name} (المتبقي لليوم: ${5 - todayAdded} ريال):`);
+                                            if (!amount) return;
+                                            const numParams = parseFloat(amount);
+                                            if (isNaN(numParams) || numParams <= 0) return alert('الرجاء إدخال مبلغ صحيح');
+                                            if (todayAdded + numParams > 5) return alert('تجاوزت الحد المسموح به لليوم (5 ريال)');
+
+                                            setLoading(true);
+                                            try {
+                                                await addWalletTransaction({
+                                                    studentId: student.studentId,
+                                                    type: 'recharge',
+                                                    amount: numParams,
+                                                    description: 'دعم من الموجه الطلابي',
+                                                    createdBy: currentUser?.id
+                                                });
+                                                alert('تمت إضافة الرصيد بنجاح');
+                                                fetchData();
+                                            } catch (e) {
+                                                alert('حدث خطأ أثناء إضافة الرصيد');
+                                            } finally {
+                                                setLoading(false);
+                                            }
+                                        }}
+                                        disabled={!canAdd}
+                                        className={`w-full py-3 rounded-xl font-bold flex items-center justify-center gap-2 transition-all shadow-sm
+                                            ${canAdd ? 'bg-purple-600 text-white hover:bg-purple-700 hover:shadow-md' : 'bg-slate-100 text-slate-400 cursor-not-allowed border border-slate-200'}
+                                        `}
+                                    >
+                                        <Plus size={16} /> {canAdd ? 'إضافة رصيد' : 'تم بلوغ الحد اليومي'}
+                                    </button>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            )}
         </>
     );
 };

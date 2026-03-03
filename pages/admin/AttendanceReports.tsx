@@ -145,14 +145,14 @@ const AttendanceReports: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody>
-                            {reportData.details.filter(d => d.status !== AttendanceStatus.PRESENT).length === 0 ? (
+                            {reportData.details.filter(d => d.status === AttendanceStatus.ABSENT || d.status === AttendanceStatus.LATE).length === 0 ? (
                                 <tr>
                                     <td colSpan={5} className="p-8 text-center font-bold">
                                         سجل نظيف! لا يوجد غياب أو تأخر مسجل اليوم.
                                     </td>
                                 </tr>
                             ) : (
-                                reportData.details.filter(d => d.status !== AttendanceStatus.PRESENT).map((item, index) => {
+                                reportData.details.filter(d => d.status === AttendanceStatus.ABSENT || d.status === AttendanceStatus.LATE).map((item, index) => {
                                     const excuseStatus = getExcuseStatus(item.studentId, item.studentName);
                                     return (
                                         <tr key={index}>
@@ -291,7 +291,7 @@ const AttendanceReports: React.FC = () => {
                                 </tr>
                             </thead>
                             <tbody className="divide-y divide-slate-100 text-sm">
-                                {reportData.details.filter(d => d.status !== AttendanceStatus.PRESENT).length === 0 ? (
+                                {reportData.details.filter(d => d.status === AttendanceStatus.ABSENT || d.status === AttendanceStatus.LATE).length === 0 ? (
                                     <tr>
                                         <td colSpan={4} className="p-12 text-center text-slate-400 font-bold flex flex-col items-center justify-center">
                                             <CheckCircle size={48} className="mb-2 text-emerald-200" />
@@ -299,7 +299,7 @@ const AttendanceReports: React.FC = () => {
                                         </td>
                                     </tr>
                                 ) : (
-                                    reportData.details.filter(d => d.status !== AttendanceStatus.PRESENT).map((item, index) => {
+                                    reportData.details.filter(d => d.status === AttendanceStatus.ABSENT || d.status === AttendanceStatus.LATE).map((item, index) => {
                                         const excuseStatus = getExcuseStatus(item.studentId, item.studentName);
                                         return (
                                             <tr key={index} className="hover:bg-blue-50/30 transition-colors group">
@@ -322,8 +322,8 @@ const AttendanceReports: React.FC = () => {
                                                 </td>
                                                 <td className="p-4">
                                                     <span className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold ${item.status === AttendanceStatus.ABSENT
-                                                            ? 'bg-red-50 text-red-700 border border-red-100'
-                                                            : 'bg-amber-50 text-amber-700 border border-amber-100'
+                                                        ? 'bg-red-50 text-red-700 border border-red-100'
+                                                        : 'bg-amber-50 text-amber-700 border border-amber-100'
                                                         }`}>
                                                         {item.status === AttendanceStatus.ABSENT ? 'غياب' : 'تأخر'}
                                                     </span>
@@ -331,8 +331,8 @@ const AttendanceReports: React.FC = () => {
                                                 <td className="p-4">
                                                     {excuseStatus ? (
                                                         <span className={`flex items-center gap-1.5 w-fit px-3 py-1.5 rounded-lg text-xs font-bold border ${excuseStatus === RequestStatus.APPROVED ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                                                                excuseStatus === RequestStatus.REJECTED ? 'bg-red-50 text-red-700 border-red-200' :
-                                                                    'bg-amber-50 text-amber-700 border-amber-200'
+                                                            excuseStatus === RequestStatus.REJECTED ? 'bg-red-50 text-red-700 border-red-200' :
+                                                                'bg-amber-50 text-amber-700 border-amber-200'
                                                             }`}>
                                                             {excuseStatus === RequestStatus.APPROVED ? 'مقبول' :
                                                                 excuseStatus === RequestStatus.REJECTED ? 'مرفوض' : 'قيد المراجعة'}

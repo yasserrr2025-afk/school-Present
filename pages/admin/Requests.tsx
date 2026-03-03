@@ -19,8 +19,6 @@ const Requests: React.FC = () => {
     const [studentHistory, setStudentHistory] = useState<{ date: string, status: AttendanceStatus }[]>([]);
     const [loadingHistory, setLoadingHistory] = useState(false);
 
-    const [isAnalyzing, setIsAnalyzing] = useState(false);
-    const [analysisReport, setAnalysisReport] = useState<string | null>(null);
     const [isGeneratingReply, setIsGeneratingReply] = useState(false);
     const [aiReply, setAiReply] = useState('');
     const [replyType, setReplyType] = useState<'accept' | 'reject' | null>(null);
@@ -87,17 +85,6 @@ const Requests: React.FC = () => {
         }
     };
 
-    const generateAnalysis = async () => {
-        setIsAnalyzing(true);
-        try {
-            const pendingCount = requests.filter(r => r.status === RequestStatus.PENDING).length;
-            const prompt = `بصفتك مدير مدرسة، حلل طلبات الأعذار التالية:\n- إجمالي الطلبات: ${requests.length}\n- المعلقة: ${pendingCount}\nالمطلوب: هل هناك نمط غير طبيعي للأعذار؟ وما التوجيه المناسب؟`;
-            const res = await generateSmartContent(prompt);
-            setAnalysisReport(res);
-        } catch (e: any) { setAnalysisReport(e.message); }
-        finally { setIsAnalyzing(false); }
-    };
-
     const generateAiReply = async (type: 'accept' | 'reject') => {
         if (!selectedReq) return;
         setIsGeneratingReply(true);
@@ -161,14 +148,6 @@ const Requests: React.FC = () => {
                         <p className="text-slate-500 mt-1 text-sm">مراجعة واتخاذ القرارات بشأن غياب الطلاب</p>
                     </div>
                     <div className="flex flex-wrap items-center gap-2">
-                        <button
-                            onClick={generateAnalysis}
-                            disabled={isAnalyzing}
-                            className="bg-purple-50 text-purple-700 px-4 py-2.5 rounded-xl hover:bg-purple-100 transition-all font-bold text-sm flex items-center gap-2 border border-purple-100 shadow-sm"
-                        >
-                            {isAnalyzing ? <Loader2 className="animate-spin" size={18} /> : <BrainCircuit size={18} />}
-                            تحليل ذكي
-                        </button>
                         <button onClick={() => fetchRequests(true)} className="bg-slate-100 text-slate-600 p-2.5 rounded-xl hover:bg-slate-200 transition-colors border border-slate-200" title="تحديث">
                             <RefreshCw size={18} className={loading ? 'animate-spin' : ''} />
                         </button>
@@ -211,19 +190,6 @@ const Requests: React.FC = () => {
                     })}
                 </div>
             </div>
-
-            {/* AI Analysis Panel */}
-            {analysisReport && (
-                <div className="bg-purple-50 border border-purple-200 p-5 rounded-2xl relative animate-fade-in">
-                    <button onClick={() => setAnalysisReport(null)} className="absolute top-3 left-3 text-purple-400 hover:text-purple-700 bg-white rounded-full p-1 shadow-sm transition-colors">
-                        <X size={14} />
-                    </button>
-                    <h4 className="font-bold text-purple-800 mb-2 flex items-center gap-2 text-sm">
-                        <Sparkles size={16} className="text-purple-500" /> تحليل الذكاء الاصطناعي
-                    </h4>
-                    <p className="text-sm text-purple-700 leading-relaxed whitespace-pre-line">{analysisReport}</p>
-                </div>
-            )}
 
             {/* Results Info */}
             {!loading && (
