@@ -3,6 +3,7 @@ import { Plus, Trash2, Search, UserCheck, School, X, CheckSquare, Square, Loader
 import { getStaffUsersSync, getStaffUsers, addStaffUser, updateStaffUser, deleteStaffUser, getAvailableClassesForGrade, getExistingGrades } from '../../services/storage';
 import { StaffUser, ClassAssignment } from '../../types';
 import { PERMISSIONS } from '../../constants';
+import { useSyncData } from '../../hooks/useSyncData';
 
 declare var XLSX: any;
 
@@ -42,6 +43,8 @@ const Users: React.FC = () => {
          setLoading(false);
       }
    };
+
+   useSyncData('staff_users', () => { fetchUsers(); });
 
    useEffect(() => {
       fetchUsers();

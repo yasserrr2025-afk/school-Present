@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Plus, Trash2, Search, UserCheck, School, X, CheckSquare, Square, Loader2, RefreshCw, Edit, Save, Smartphone, Hash, GraduationCap, Filter } from 'lucide-react';
 import { getStudents, syncStudentsBatch, getStudentsSync, addStudent, deleteStudent, bulkDeleteStudents, updateStudent, getAvailableClassesForGrade } from '../../services/storage';
 import { Student } from '../../types';
+import { useSyncData } from '../../hooks/useSyncData';
 
 
 // Declare XLSX for TypeScript since it's loaded via CDN in index.html
@@ -50,6 +51,8 @@ const Students: React.FC = () => {
       setLoading(false);
     }
   };
+
+  useSyncData('students', () => { fetchStudents(true); });
 
   useEffect(() => {
     fetchStudents();

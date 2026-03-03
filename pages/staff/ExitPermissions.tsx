@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { LogOut, Plus, Search, Calendar, User, Phone, CheckCircle, Clock, XCircle, Printer, X } from 'lucide-react';
 import { getStudents, addExitPermission, getExitPermissions } from '../../services/storage';
 import { Student, StaffUser, ExitPermission } from '../../types';
+import { useSyncData } from '../../hooks/useSyncData';
 
 
 const ExitPermissions: React.FC = () => {
@@ -49,6 +50,8 @@ const ExitPermissions: React.FC = () => {
             setLoading(false);
         }
     };
+
+    useSyncData('exit_permissions', fetchData);
 
     const uniqueGrades = useMemo(() => {
         const grades = new Set<string>();

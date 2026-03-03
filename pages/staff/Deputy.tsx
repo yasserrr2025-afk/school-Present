@@ -34,7 +34,11 @@ import {
     getExitPermissions,
     updateExitPermissionStatus
 } from '../../services/storage';
-import { Student, BehaviorRecord, StaffUser, Referral, StudentObservation, AttendanceRecord, AttendanceStatus, DailyAcademicLog, ExitPermission } from '../../types';
+import {
+    Student, BehaviorRecord, Referral, StudentObservation,
+    AttendanceRecord, AttendanceStatus, StaffUser, ExitPermission, DailyAcademicLog
+} from '../../types';
+import { useSyncData } from '../../hooks/useSyncData';
 import { BEHAVIOR_VIOLATIONS } from '../../constants';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, AreaChart, Area } from 'recharts';
 import AttendanceMonitor from './AttendanceMonitor';
@@ -186,6 +190,9 @@ const StaffDeputy: React.FC = () => {
             setLoading(false);
         }
     };
+
+    useSyncData('behavior_records', fetchData);
+    useSyncData('referrals', fetchData);
 
     const stats = useMemo(() => {
         const totalViolations = records.length;

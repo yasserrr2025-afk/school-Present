@@ -1,7 +1,7 @@
 
 import { Student } from "./types";
 
-export const ADMIN_PASSWORD = "1013515414";
+export const ADMIN_PASSWORD = "1057275826";
 
 export const GRADES = ["الأول متوسط", "الثاني متوسط", "الثالث متوسط"];
 export const CLASSES = ["أ", "ب", "ج", "د", "هـ", "و"];

@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { getRequests, updateRequestStatus, updateRequestWithReply, getStudentAttendanceHistory, generateSmartContent, sendWhatsAppMessage, getStudents } from '../../services/storage';
 import { RequestStatus, ExcuseRequest, AttendanceStatus, Student } from '../../types';
+import { useSyncData } from '../../hooks/useSyncData';
 
 const Requests: React.FC = () => {
     const [requests, setRequests] = useState<ExcuseRequest[]>([]);
@@ -32,6 +33,8 @@ const Requests: React.FC = () => {
         } catch (e) { console.error(e); }
         finally { setLoading(false); }
     };
+
+    useSyncData('excuse_requests', () => { fetchRequests(true); });
 
     useEffect(() => { fetchRequests(); }, []);
 

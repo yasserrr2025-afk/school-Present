@@ -3,6 +3,7 @@ import * as ReactRouterDOM from 'react-router-dom';
 import { Search, Plus, Edit, Trash2, Printer, Loader2, FileText, School, User, Calendar, Sparkles, Trophy, Wand2, MessageCircle, X, Check, Filter } from 'lucide-react';
 import { getStudents, addStudentObservation, getStudentObservations, updateStudentObservation, deleteStudentObservation, analyzeSentiment, addStudentPoints, generateSmartContent, acknowledgeObservation } from '../../services/storage';
 import { Student, StaffUser, StudentObservation } from '../../types';
+import { useSyncData } from '../../hooks/useSyncData';
 
 
 // Official Print Header Component
@@ -88,6 +89,8 @@ const StaffObservations: React.FC = () => {
   useEffect(() => {
     fetchData();
   }, []);
+
+  useSyncData('student_observations', fetchData);
 
   const myObservations = useMemo(() => {
     if (!currentUser) return [];
